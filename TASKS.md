@@ -2,11 +2,11 @@
 
 ## Active Queue
 
-### [READY_FOR_TRANSLATION_REVIEW_V1] Translation EN→VI V1
+### [READY_FOR_TRANSLATION_RE_REVIEW_V2] Translation EN→VI V2
 - **Priority:** P1
-- **Status:** READY_FOR_TRANSLATION_REVIEW_V1 — PR `feat/shadowing-translation-en-vi` -> `main`
-- **Scope:** Complete EN->VI translation pipeline with provider contract (`TranslationProviderContract`), DeepSeek adapter (`DeepSeekTranslationAdapter`), domain translation service (`ShadowingTranslationService`), context builder (prev/current/next), atomic DB persistence, idempotency gate (`vi-v1`), 10 permanent PHPUnit tests, runtime verification, and zero student session AI calls.
-- **Evidence:** See `TRANSLATION_EVIDENCE_V1.md`.
+- **Status:** READY_FOR_TRANSLATION_RE_REVIEW_V2 — PR #2 (`feat/shadowing-translation-en-vi` -> `main`)
+- **Scope:** Complete EN->VI translation pipeline with provider contract (`TranslationProviderContract`), DeepSeek adapter (`DeepSeekTranslationAdapter`), state machine (`pending` ➔ `processing` ➔ `completed`/`failed`), concurrency lock, queued job (`ProcessShadowingTranslationJob`) with `$tries = 3` and backoff `[30, 120, 300]`, bounded batching (25 chunks), dedicated `translation_error` column, 16 permanent PHPUnit tests (29/29 total pass), runtime verification with real Vietnamese translations, and zero student session AI calls.
+- **Evidence:** See `TRANSLATION_EVIDENCE_V2.md` and `DECISIONS.md` (ADR-006).
 
 ### [RESOLVED] BUG-004: Wrong Transcript Source
 - **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)

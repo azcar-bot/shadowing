@@ -14,16 +14,24 @@ class ProcessShadowingTranslationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+    public int $timeout = 120;
+
     public function __construct(
         public int $shadowingSourceId,
-        public string $targetVersion = 'vi-v1',
+        public ?string $targetVersion = null,
         public bool $force = false
     ) {}
+
+    public function backoff(): array
+    {
+        return [30, 120, 300];
+    }
 
     public function handle(ShadowingTranslationService $service): void
     {
         $source = ShadowingSource::find($this->shadowingSourceId);
-        if (!$source) {
+        if (! $source) {
             return;
         }
 

@@ -5,23 +5,28 @@ namespace Tests\Feature\Modules\Shadowing;
 use App\Livewire\ShadowingPractice;
 use App\Models\User;
 use App\Modules\Shadowing\Domain\Contracts\TranslationProviderContract;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderUnavailableException;
+use App\Modules\Shadowing\Domain\Jobs\ProcessShadowingTranslationJob;
 use App\Modules\Shadowing\Domain\Services\ShadowingLessonFactoryService;
 use App\Modules\Shadowing\Domain\Services\ShadowingTranslationService;
+use App\Modules\Shadowing\Infrastructure\Adapters\DeepSeekTranslationAdapter;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingLesson;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSegment;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSource;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSourceChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use InvalidArgumentException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 class ShadowingTranslationTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function createValidSourceWithChunks(string $videoId = 'dbtN9HOOqhk'): ShadowingSource
+    protected function createValidSourceWithChunks(string $videoId = 'dbtN9HOOqhk', int $chunkCount = 3): ShadowingSource
     {
         $source = ShadowingSource::create([
             'youtube_video_id' => $videoId,
@@ -32,29 +37,15 @@ class ShadowingTranslationTest extends TestCase
             'status' => 'completed',
         ]);
 
-        ShadowingSourceChunk::create([
-            'shadowing_source_id' => $source->id,
-            'chunk_index' => 1,
-            'start_ms' => 0,
-            'end_ms' => 3000,
-            'transcript' => 'The day, a star fell.',
-        ]);
-
-        ShadowingSourceChunk::create([
-            'shadowing_source_id' => $source->id,
-            'chunk_index' => 2,
-            'start_ms' => 3000,
-            'end_ms' => 6000,
-            'transcript' => 'It was almost like a dream.',
-        ]);
-
-        ShadowingSourceChunk::create([
-            'shadowing_source_id' => $source->id,
-            'chunk_index' => 3,
-            'start_ms' => 6000,
-            'end_ms' => 9000,
-            'transcript' => 'A breathtaking view.',
-        ]);
+        for ($i = 1; $i <= $chunkCount; $i++) {
+            ShadowingSourceChunk::create([
+                'shadowing_source_id' => $source->id,
+                'chunk_index' => $i,
+                'start_ms' => ($i - 1) * 3000,
+                'end_ms' => $i * 3000,
+                'transcript' => "Chunk text {$i}",
+            ]);
+        }
 
         return $source;
     }
@@ -95,9 +86,9 @@ class ShadowingTranslationTest extends TestCase
         $mockProvider->expects($this->once())
             ->method('translateChunks')
             ->willReturn([
-                ['chunk_index' => 1, 'translation_vi' => 'Ngày mà một ngôi sao rơi xuống.'],
-                ['chunk_index' => 2, 'translation_vi' => 'Nó gần như thể một giấc mơ.'],
-                ['chunk_index' => 3, 'translation_vi' => 'Một khung cảnh ngoạn mục.'],
+                ['chunk_index' => 1, 'translation_vi' => 'Dịch 1'],
+                ['chunk_index' => 2, 'translation_vi' => 'Dịch 2'],
+                ['chunk_index' => 3, 'translation_vi' => 'Dịch 3'],
             ]);
         $mockProvider->method('getProviderName')->willReturn('mock_provider');
         $mockProvider->method('getModelName')->willReturn('mock_model');
@@ -116,7 +107,6 @@ class ShadowingTranslationTest extends TestCase
         $source = $this->createValidSourceWithChunks();
 
         $mockProvider = $this->createMock(TranslationProviderContract::class);
-        // Expect provider to be called EXACTLY ONCE across two translateSource invocations
         $mockProvider->expects($this->once())
             ->method('translateChunks')
             ->willReturn([
@@ -129,11 +119,10 @@ class ShadowingTranslationTest extends TestCase
 
         $service = new ShadowingTranslationService($mockProvider);
 
-        // 1st call -> triggers provider
         $result1 = $service->translateSource($source, 'vi-v1');
         $this->assertTrue($result1);
 
-        // 2nd call (same version) -> skips provider (idempotent)
+        // 2nd call with all chunks present -> skips provider
         $result2 = $service->translateSource($source, 'vi-v1');
         $this->assertTrue($result2);
     }
@@ -145,9 +134,17 @@ class ShadowingTranslationTest extends TestCase
         $originalChunk1Text = $source->chunks[0]->transcript;
         $originalChunk2Text = $source->chunks[1]->transcript;
 
-        /** @var ShadowingTranslationService $translationService */
-        $translationService = app(ShadowingTranslationService::class);
-        $translationService->translateSource($source);
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')->willReturn([
+            ['chunk_index' => 1, 'translation_vi' => 'Dịch 1'],
+            ['chunk_index' => 2, 'translation_vi' => 'Dịch 2'],
+            ['chunk_index' => 3, 'translation_vi' => 'Dịch 3'],
+        ]);
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+        $service->translateSource($source);
 
         $freshSource = $source->fresh();
         $this->assertEquals($originalChunk1Text, $freshSource->chunks[0]->transcript);
@@ -159,30 +156,46 @@ class ShadowingTranslationTest extends TestCase
     {
         $source = $this->createValidSourceWithChunks();
 
-        /** @var ShadowingTranslationService $translationService */
-        $translationService = app(ShadowingTranslationService::class);
-        $translationService->translateSource($source);
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')->willReturn([
+            ['chunk_index' => 1, 'translation_vi' => 'Ngày mà ngôi sao rơi.'],
+            ['chunk_index' => 2, 'translation_vi' => 'Dịch 2'],
+            ['chunk_index' => 3, 'translation_vi' => 'Dịch 3'],
+        ]);
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+        $service->translateSource($source);
 
         $chunk1 = $source->chunks()->where('chunk_index', 1)->first();
-        $this->assertNotEmpty($chunk1->translation_vi);
-        $this->assertStringContainsString('Ngày', $chunk1->translation_vi);
+        $this->assertEquals('Ngày mà ngôi sao rơi.', $chunk1->translation_vi);
     }
 
     #[Test]
     public function translation_is_synced_to_lesson_segments(): void
     {
         $source = $this->createValidSourceWithChunks();
+        Bus::fake();
 
         /** @var ShadowingLessonFactoryService $factoryService */
         $factoryService = app(ShadowingLessonFactoryService::class);
         $lesson = $factoryService->createOfficialLesson($source, ['code' => 'test_sync_lesson_' . time()]);
 
-        /** @var ShadowingTranslationService $translationService */
-        $translationService = app(ShadowingTranslationService::class);
-        $translationService->translateSource($source);
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')->willReturn([
+            ['chunk_index' => 1, 'translation_vi' => 'Dịch Segment 1'],
+            ['chunk_index' => 2, 'translation_vi' => 'Dịch Segment 2'],
+            ['chunk_index' => 3, 'translation_vi' => 'Dịch Segment 3'],
+        ]);
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+        $service->translateSource($source);
 
         $seg1 = ShadowingSegment::where('shadowing_lesson_id', $lesson->id)->where('segment_index', 1)->first();
-        $this->assertNotEmpty($seg1->translation_vi);
+        $this->assertEquals('Dịch Segment 1', $seg1->translation_vi);
     }
 
     #[Test]
@@ -191,7 +204,6 @@ class ShadowingTranslationTest extends TestCase
         $source = $this->createValidSourceWithChunks();
 
         $mockProvider = $this->createMock(TranslationProviderContract::class);
-        // Return incomplete/malformed translations missing chunk 2 & 3
         $mockProvider->expects($this->once())
             ->method('translateChunks')
             ->willReturn([
@@ -201,11 +213,15 @@ class ShadowingTranslationTest extends TestCase
         $mockProvider->method('getModelName')->willReturn('mock');
 
         $service = new ShadowingTranslationService($mockProvider);
-        $result = $service->translateSource($source);
 
-        $this->assertFalse($result);
+        try {
+            $service->translateSource($source);
+        } catch (RuntimeException $e) {
+            // Expected
+        }
+
         $this->assertEquals('failed', $source->fresh()->translation_status);
-        $this->assertNotNull($source->fresh()->error_message);
+        $this->assertNotNull($source->fresh()->translation_error);
     }
 
     #[Test]
@@ -216,25 +232,29 @@ class ShadowingTranslationTest extends TestCase
         $mockProvider = $this->createMock(TranslationProviderContract::class);
         $mockProvider->expects($this->once())
             ->method('translateChunks')
-            ->willThrowException(new \RuntimeException("API Connection Timeout"));
+            ->willThrowException(new RuntimeException("API Connection Timeout"));
         $mockProvider->method('getProviderName')->willReturn('mock');
         $mockProvider->method('getModelName')->willReturn('mock');
 
         $service = new ShadowingTranslationService($mockProvider);
-        $result = $service->translateSource($source);
 
-        $this->assertFalse($result);
+        try {
+            $service->translateSource($source);
+        } catch (RuntimeException $e) {
+            // Expected transient error re-thrown
+        }
+
         $this->assertEquals('failed', $source->fresh()->translation_status);
-        $this->assertStringContainsString('API Connection Timeout', $source->fresh()->error_message);
-
-        // English transcript is unaffected
-        $this->assertEquals('The day, a star fell.', $source->chunks[0]->fresh()->transcript);
+        $this->assertStringContainsString('API Connection Timeout', $source->fresh()->translation_error);
+        $this->assertEquals('Chunk text 1', $source->chunks[0]->fresh()->transcript);
     }
 
     #[Test]
     public function opening_practice_does_not_call_translation_provider(): void
     {
         $source = $this->createValidSourceWithChunks();
+        Bus::fake();
+
         /** @var ShadowingLessonFactoryService $factoryService */
         $factoryService = app(ShadowingLessonFactoryService::class);
         $lesson = $factoryService->createOfficialLesson($source, ['code' => 'test_open_practice_' . time()]);
@@ -247,7 +267,6 @@ class ShadowingTranslationTest extends TestCase
         $mockProvider->expects($this->never())->method('translateChunks');
         $this->app->instance(TranslationProviderContract::class, $mockProvider);
 
-        // Render practice component multiple times
         Livewire::test(ShadowingPractice::class, ['lessonCode' => $lesson->code])
             ->assertSee($lesson->title);
     }
@@ -276,16 +295,153 @@ class ShadowingTranslationTest extends TestCase
         $service->translateSource($source);
 
         $this->assertCount(3, $capturedItems);
-        // Chunk 1 context: prev = null, next = Chunk 2
         $this->assertNull($capturedItems[0]['prev_transcript']);
-        $this->assertEquals('It was almost like a dream.', $capturedItems[0]['next_transcript']);
+        $this->assertEquals('Chunk text 2', $capturedItems[0]['next_transcript']);
 
-        // Chunk 2 context: prev = Chunk 1, next = Chunk 3
-        $this->assertEquals('The day, a star fell.', $capturedItems[1]['prev_transcript']);
-        $this->assertEquals('A breathtaking view.', $capturedItems[1]['next_transcript']);
+        $this->assertEquals('Chunk text 1', $capturedItems[1]['prev_transcript']);
+        $this->assertEquals('Chunk text 3', $capturedItems[1]['next_transcript']);
 
-        // Chunk 3 context: prev = Chunk 2, next = null
-        $this->assertEquals('It was almost like a dream.', $capturedItems[2]['prev_transcript']);
+        $this->assertEquals('Chunk text 2', $capturedItems[2]['prev_transcript']);
         $this->assertNull($capturedItems[2]['next_transcript']);
+    }
+
+    #[Test]
+    public function missing_real_provider_credentials_never_produces_fake_translation(): void
+    {
+        $adapter = new DeepSeekTranslationAdapter(apiKey: '');
+
+        $this->expectException(TranslationProviderUnavailableException::class);
+        $this->expectExceptionMessage('DeepSeek API key is missing');
+
+        $adapter->translateChunks([
+            ['chunk_index' => 1, 'transcript' => 'Test', 'prev_transcript' => null, 'next_transcript' => null],
+        ]);
+    }
+
+    #[Test]
+    public function completed_metadata_with_missing_chunk_retranslates(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+        // Mark source as completed, but chunk 2 is missing translation_vi
+        $source->update([
+            'translation_status' => 'completed',
+            'translation_version' => 'vi-v1',
+        ]);
+        $source->chunks[0]->update(['translation_vi' => 'Dịch 1']);
+        // chunk 2 has null translation_vi
+
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->expects($this->once())
+            ->method('translateChunks')
+            ->willReturn([
+                ['chunk_index' => 1, 'translation_vi' => 'Dịch 1 mới'],
+                ['chunk_index' => 2, 'translation_vi' => 'Dịch 2 mới'],
+                ['chunk_index' => 3, 'translation_vi' => 'Dịch 3 mới'],
+            ]);
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+        $result = $service->translateSource($source, 'vi-v1');
+
+        $this->assertTrue($result);
+        $this->assertEquals('Dịch 2 mới', $source->chunks[1]->fresh()->translation_vi);
+    }
+
+    #[Test]
+    public function factory_dispatches_translation_job_instead_of_synchronous_provider_call(): void
+    {
+        Bus::fake();
+
+        $source = $this->createValidSourceWithChunks();
+        /** @var ShadowingLessonFactoryService $factory */
+        $factory = app(ShadowingLessonFactoryService::class);
+
+        $lesson = $factory->createOfficialLesson($source, ['code' => 'test_job_dispatch_' . time()]);
+
+        $this->assertNotNull($lesson);
+        Bus::assertDispatched(ProcessShadowingTranslationJob::class, function ($job) use ($source) {
+            return $job->shadowingSourceId === $source->id;
+        });
+    }
+
+    #[Test]
+    public function transient_provider_exception_is_retryable(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')
+            ->willThrowException(new RuntimeException("503 Service Unavailable"));
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("503 Service Unavailable");
+
+        $service->translateSource($source);
+    }
+
+    #[Test]
+    public function translation_state_moves_through_processing(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+
+        $stateInProviderCall = null;
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->expects($this->once())
+            ->method('translateChunks')
+            ->willReturnCallback(function () use ($source, &$stateInProviderCall) {
+                $stateInProviderCall = $source->fresh()->translation_status;
+                return [
+                    ['chunk_index' => 1, 'translation_vi' => 'T1'],
+                    ['chunk_index' => 2, 'translation_vi' => 'T2'],
+                    ['chunk_index' => 3, 'translation_vi' => 'T3'],
+                ];
+            });
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+        $service->translateSource($source);
+
+        $this->assertEquals('processing', $stateInProviderCall);
+        $this->assertEquals('completed', $source->fresh()->translation_status);
+    }
+
+    #[Test]
+    public function hundred_plus_chunks_are_translated_in_bounded_batches(): void
+    {
+        // Create source with 55 chunks
+        $source = $this->createValidSourceWithChunks('batch_test_100', 55);
+
+        config(['shadowing.translation.batch_size' => 20]);
+
+        $callCount = 0;
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->expects($this->exactly(3)) // 55 chunks / 20 batch_size = 3 batches
+            ->method('translateChunks')
+            ->willReturnCallback(function (array $items) use (&$callCount) {
+                $callCount++;
+                $results = [];
+                foreach ($items as $item) {
+                    $results[] = [
+                        'chunk_index' => $item['chunk_index'],
+                        'translation_vi' => "Bản dịch chunk {$item['chunk_index']}",
+                    ];
+                }
+                return $results;
+            });
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+        $result = $service->translateSource($source);
+
+        $this->assertTrue($result);
+        $this->assertEquals(3, $callCount);
+        $this->assertEquals('Bản dịch chunk 55', $source->chunks()->where('chunk_index', 55)->first()->translation_vi);
     }
 }

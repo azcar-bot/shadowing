@@ -56,4 +56,21 @@ return [
         // Articles
         'a', 'an', 'the',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Translation EN->VI Subsystem Configuration
+    |--------------------------------------------------------------------------
+    */
+    'translation' => [
+        'enabled'     => env('SHADOWING_TRANSLATION_ENABLED', true),
+        'provider'    => env('SHADOWING_TRANSLATION_PROVIDER', 'deepseek'),
+        'model'       => env('SHADOWING_TRANSLATION_MODEL', 'deepseek-chat'),
+        'version'     => env('SHADOWING_TRANSLATION_VERSION', 'vi-v1'),
+        'batch_size'  => env('SHADOWING_TRANSLATION_BATCH_SIZE', 25),
+        'deepseek'    => [
+            'api_key'  => env('DEEPSEEK_API_KEY'),
+            'base_url' => env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1'),
+        ],
+    ],
 ];

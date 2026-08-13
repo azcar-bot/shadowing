@@ -26,6 +26,7 @@ class ShadowingSource extends Model
         'translation_model',
         'translation_version',
         'translated_at',
+        'translation_error',
         'raw_payload',
         'error_message',
     ];
