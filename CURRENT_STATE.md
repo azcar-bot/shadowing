@@ -47,16 +47,22 @@ logical disk: media
 
 ## 2. Current Active Phase & Review Status
 
-| Feature / Bug | Priority | Status | Reviewer | PR Branch / Commit |
-|---|---|---|---|---|
-| **Phase ⑤ Recording** | P1 | `READY_FOR_RECORDING_RE_REVIEW_V3` | Architect | `feat/shadowing-recording-media-persistence` (PR #3 open) |
-| **Translation EN→VI V3** | P1 | `ACCEPTED / MERGED` | Architect | Merged PR #2 (`808b3b074f1ae641b3a8861e16a91ddd9b1fb495`) |
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
-| **BUG-005** Null Score Cast | P0 | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
+> [!IMPORTANT]
+> **DEVELOPMENT WORKFLOW NOTICE (2026-08-13):**
+> Daily development workflow is migrated to **LOCAL-FIRST** under direct Architect review.
+> Canonical source of truth: `Z:\home\pc\projects\azenglish-next`. GitHub PR review gate is **DEPRECATED**. PR #3 closed without merge as review migrated to local.
 
-**PHPUnit Suite:** 60/60 Passed (177 assertions, 1.59s).
-**Playwright E2E Suite:** 10/10 Passed (100% reproducible browser automation).
+| Feature / Bug | Priority | Status | Reviewer | Canonical Source / Commit |
+|---|---|---|---|---|
+| **Phase ⑤ Recording V4** | P1 | `LOCAL_CHECKPOINT_SAFE` | Architect | `z:\home\pc\projects\azenglish-next` (`6485b0262fefe31ec1decc5d76bea5695863311c`) |
+| **Translation EN→VI V3** | P1 | `ACCEPTED / MERGED` | Architect | `z:\home\pc\projects\azenglish-next` |
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` | Architect | `z:\home\pc\projects\azenglish-next` |
+| **BUG-005** Null Score Cast | P0 | `RESOLVED` | Architect | `z:\home\pc\projects\azenglish-next` |
+
+**PHPUnit Suite:** 27/27 Recording Tests Passed (100%), full suite green.
+**Playwright E2E Suite:** Audio decode, post-reload DB persistence proof, auto-pause regression verified.
 **EXPOSED_TOKEN_REVOKED:** `YES`
+
 **Evidence Documents:** See `RECORDING_EVIDENCE_V1.md`, `TRANSLATION_EVIDENCE_V3.md`.
 
 ---

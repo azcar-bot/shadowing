@@ -2,6 +2,13 @@
 
 > YouTube-based English Shadowing practice module built with **Laravel 13 + Livewire 4 + Alpine.js**.
 
+> [!IMPORTANT]
+> **DEVELOPMENT WORKFLOW NOTICE (2026-08-13)**:
+> The GitHub PR coordination workflow is **DEPRECATED** for daily Shadowing development.
+> The single canonical source of truth for all source code and active development is **`Z:\home\pc\projects\azenglish-next`**.
+> Development workflow is **LOCAL-FIRST**: Product Owner → Architect → Implementer → Local Source (`azenglish-next`) → Docker / PHPUnit / Browser E2E Verification → Architect ACCEPT / NEEDS_FIX.
+
+
 ## Features
 
 ### Lesson Generation Pipeline
