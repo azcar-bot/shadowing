@@ -80,9 +80,9 @@ class ShadowingTranslationService
             return true;
         }
 
-        // 3. CONCURRENCY LOCK (Job timeout is 120s -> Lock TTL = 240s safety margin)
+        // 3. CONCURRENCY LOCK (Job timeout is 300s -> Lock TTL = 420s safety margin)
         $lockKey = "shadowing_translation_lock_{$source->id}";
-        $lock = Cache::lock($lockKey, 240);
+        $lock = Cache::lock($lockKey, 420);
 
         if (! $lock->get()) {
             Log::warning("ShadowingSource ID {$source->id} translation is currently locked by another worker.");

@@ -49,12 +49,12 @@ logical disk: media
 
 | Feature / Bug | Priority | Status | Reviewer | PR Branch |
 |---|---|---|---|---|
-| **Translation EN→VI V2** | P1 | `READY_FOR_TRANSLATION_RE_REVIEW_V2` | Architect | `feat/shadowing-translation-en-vi` (PR #2) |
+| **Translation EN→VI V3 Final** | P1 | `READY_FOR_TRANSLATION_FINAL_REVIEW` | Architect | `feat/shadowing-translation-en-vi` (PR #2) |
 | **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` (Merged PR #1) | Architect | `main` |
 | **BUG-005** Null Score Cast | P0 | `RESOLVED` (Merged PR #1) | Architect | `main` |
 
-**PHPUnit Suite:** 29/29 Passed (98 assertions, 1.14s).
-**Evidence Document:** See `TRANSLATION_EVIDENCE_V2.md`.
+**PHPUnit Suite:** 36/36 Passed (114 assertions, 3.28s).
+**Evidence Document:** See `TRANSLATION_EVIDENCE_V3.md`.
 
 ---
 

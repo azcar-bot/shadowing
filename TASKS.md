@@ -2,11 +2,11 @@
 
 ## Active Queue
 
-### [READY_FOR_TRANSLATION_RE_REVIEW_V2] Translation EN→VI V2
+### [READY_FOR_TRANSLATION_FINAL_REVIEW] Translation EN→VI V3 Final
 - **Priority:** P1
-- **Status:** READY_FOR_TRANSLATION_RE_REVIEW_V2 — PR #2 (`feat/shadowing-translation-en-vi` -> `main`)
-- **Scope:** Complete EN->VI translation pipeline with provider contract (`TranslationProviderContract`), DeepSeek adapter (`DeepSeekTranslationAdapter`), state machine (`pending` ➔ `processing` ➔ `completed`/`failed`), concurrency lock, queued job (`ProcessShadowingTranslationJob`) with `$tries = 3` and backoff `[30, 120, 300]`, bounded batching (25 chunks), dedicated `translation_error` column, 16 permanent PHPUnit tests (29/29 total pass), runtime verification with real Vietnamese translations, and zero student session AI calls.
-- **Evidence:** See `TRANSLATION_EVIDENCE_V2.md` and `DECISIONS.md` (ADR-006).
+- **Status:** READY_FOR_TRANSLATION_FINAL_REVIEW — PR #2 (`feat/shadowing-translation-en-vi` -> `main`)
+- **Scope:** Complete EN->VI translation pipeline with dynamic config control (`shadowing.translation.enabled`/`provider`), exception classification (transient retryable vs permanent non-retryable), network transport error handling (`TranslationProviderTransientException`), queued job (`ProcessShadowingTranslationJob`) with `$timeout = 300s`, `$tries = 3`, backoff `[30, 120, 300]`, Lock TTL `420s`, bounded batching (25 chunks), 23 permanent PHPUnit translation tests (36/36 total pass), runtime verification with real Vietnamese translations, and zero student session AI calls.
+- **Evidence:** See `TRANSLATION_EVIDENCE_V3.md` and `DECISIONS.md` (ADR-006).
 
 ### [RESOLVED] BUG-004: Wrong Transcript Source
 - **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)

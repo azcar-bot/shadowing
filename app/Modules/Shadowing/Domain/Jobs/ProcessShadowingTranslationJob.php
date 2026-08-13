@@ -15,7 +15,7 @@ class ProcessShadowingTranslationJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-    public int $timeout = 120;
+    public int $timeout = 300; // 300s baseline: Worst case 5 batches * 45s HTTP timeout = 225s + 75s safety margin
 
     public function __construct(
         public int $shadowingSourceId,

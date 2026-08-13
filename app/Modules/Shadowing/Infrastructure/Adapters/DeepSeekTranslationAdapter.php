@@ -65,18 +65,29 @@ class DeepSeekTranslationAdapter implements TranslationProviderContract
             "Use the provided context_prev and context_next to ensure proper tone, style, and sentence flow. " .
             "Return valid JSON matching: {\"translations\": [{\"chunk_index\": 1, \"translation_vi\": \"...\"}]}";
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
-            'Content-Type'  => 'application/json',
-        ])->timeout(45)->post($this->baseUrl . '/chat/completions', [
-            'model'           => $this->model,
-            'messages'        => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => json_encode(['items' => $promptItems], JSON_UNESCAPED_UNICODE)],
-            ],
-            'response_format' => ['type' => 'json_object'],
-            'temperature'     => 0.2,
-        ]);
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type'  => 'application/json',
+            ])->timeout(45)->post($this->baseUrl . '/chat/completions', [
+                'model'           => $this->model,
+                'messages'        => [
+                    ['role' => 'system', 'content' => $systemPrompt],
+                    ['role' => 'user', 'content' => json_encode(['items' => $promptItems], JSON_UNESCAPED_UNICODE)],
+                ],
+                'response_format' => ['type' => 'json_object'],
+                'temperature'     => 0.2,
+            ]);
+        } catch (\Illuminate\Http\Client\ConnectionException | \GuzzleHttp\Exception\ConnectException | \GuzzleHttp\Exception\RequestException $e) {
+            Log::error('DeepSeek Translation Network/Connection Error', ['error' => $e->getMessage()]);
+            throw new TranslationProviderTransientException("Translation provider transport/network failure: " . $e->getMessage(), 0, $e);
+        } catch (\Throwable $e) {
+            if ($e instanceof TranslationProviderTransientException || $e instanceof TranslationProviderPermanentException) {
+                throw $e;
+            }
+            Log::error('DeepSeek Translation Unexpected Transport Error', ['error' => $e->getMessage()]);
+            throw new TranslationProviderTransientException("Translation provider transport failure: " . $e->getMessage(), 0, $e);
+        }
 
         if (! $response->successful()) {
             $status = $response->status();

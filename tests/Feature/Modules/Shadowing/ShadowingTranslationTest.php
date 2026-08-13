@@ -537,7 +537,7 @@ class ShadowingTranslationTest extends TestCase
 
         // Lock the source manually
         $lockKey = "shadowing_translation_lock_{$source->id}";
-        $lock = Cache::lock($lockKey, 240);
+        $lock = Cache::lock($lockKey, 420);
         $lock->get();
 
         $mockProvider = $this->createMock(TranslationProviderContract::class);
@@ -552,5 +552,22 @@ class ShadowingTranslationTest extends TestCase
         } finally {
             $lock->release();
         }
+    }
+
+    #[Test]
+    public function network_connection_failure_is_retryable(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.deepseek.com/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException("cURL error 28: Connection timed out after 45000 milliseconds"),
+        ]);
+
+        $adapter = new DeepSeekTranslationAdapter(apiKey: 'sk-test-real-key');
+
+        $this->expectException(TranslationProviderTransientException::class);
+        $this->expectExceptionMessage('Translation provider transport/network failure');
+
+        $adapter->translateChunks([
+            ['chunk_index' => 1, 'transcript' => 'Test transcript', 'prev_transcript' => null, 'next_transcript' => null],
+        ]);
     }
 }
