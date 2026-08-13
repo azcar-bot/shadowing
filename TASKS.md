@@ -14,20 +14,14 @@
 ### [RESOLVED] BUG-005: Null Score Cast in loadUserProgress
 - **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
 
-### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)
-- **Scope:** Add a one-time Translation Provider that runs AI translation (EN→VI) when a lesson is created. Store `translation_vi` per chunk/segment in DB. Do NOT re-translate on every student session.
-- **Dependencies:** ACCEPT gate completed (BUG-004 + BUG-005 fixed, E2E verified, Architect ACCEPT).
-- **Rationale:** If transcript is wrong, AI will translate the wrong content accurately — wasting resources and creating confusing Vietnamese text.
-
 ### [BLOCKED] Phase ⑤: Student Recording — Cloudflare R2 / MinIO Persistence
 - **Scope:** Upload client-side WebM recording Blobs via `Storage::disk('media')` to private object storage, persist object metadata in DB (NOT presigned URLs), and enable persistent dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
 - **Storage:** See ADR-004 and ADR-005 in DECISIONS.md.
-- **Dependencies:** Translation phase should be complete or at least functional.
-- **⚠️ CORRECTION:** Previous references to "S3/MinIO" and "presigned URL persistence" are INVALID. See ADR-004 for canonical storage architecture.
+- **Dependencies:** BLOCKED until Translation PR #2 is ACCEPTED/MERGED.
 
 ### [BLOCKED] Phase ⑥: AI Pronunciation Evaluation
 - **Scope:** Deepgram / DeepSeek STT & phonetic alignment evaluation.
-- **Dependencies:** Phase ⑤ must be complete.
+- **Dependencies:** BLOCKED until Phase ⑤ Recording is complete.
 
 ---
 
