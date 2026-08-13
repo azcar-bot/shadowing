@@ -15,7 +15,7 @@
 
 ### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)
 - **Scope:** Add a one-time Translation Provider that runs AI translation (EN→VI) when a lesson is created. Store `translation_vi` per chunk/segment in DB. Do NOT re-translate on every student session.
-- **Dependencies:** BUG-004 must receive `ACCEPT`. Transcript source must be verified correct before translating.
+- **Dependencies:** ACCEPT gate completed (BUG-004 + BUG-005 fixed, E2E verified, Architect ACCEPT).
 - **Rationale:** If transcript is wrong, AI will translate the wrong content accurately — wasting resources and creating confusing Vietnamese text.
 
 ### [BLOCKED] Phase ⑤: Student Recording — Cloudflare R2 / MinIO Persistence
