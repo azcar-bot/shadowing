@@ -2,10 +2,10 @@
 
 ## Active Queue
 
-### [READY_FOR_RE_REVIEW_ROUND_4] BUG-004: Wrong Transcript Source
+### [READY_TO_MERGE_REVIEW] BUG-004: Wrong Transcript Source
 - **Priority:** P0 CRITICAL
-- **Status:** READY_FOR_RE_REVIEW_ROUND_4 — PR `fix/bug-004-005-round3`
-- **Enhancements:** validateSource() gate, dedupe query exclusion, legacy cleanup migration `2026_08_13_170000`, strict availableLessons semantics.
+- **Status:** ACCEPTED (Round 4) — READY_TO_MERGE_REVIEW (PR `fix/bug-004-005-round3` -> `main`)
+- **PHPUnit Tests:** `ShadowingRegressionVerificationTest.php` (3 permanent feature tests passed). Total suite: 13/13 passed.
 - **E2E Evidence:** 8/8 Integration tests + Real Playwright Browser E2E passed. See `E2E_EVIDENCE_ROUND4.md`.
 
 ### [ACCEPTED] BUG-005: Null Score Cast in loadUserProgress

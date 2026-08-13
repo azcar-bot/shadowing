@@ -4,7 +4,8 @@
 
 ### BUG-004: Wrong Transcript Source — Hardcoded Legacy Lesson Code [P0 CRITICAL]
 - **Reported:** 2026-08-13
-- **Status:** READY_FOR_RE_REVIEW_ROUND_4 — PR Branch `fix/bug-004-005-round3`
+- **Status:** ACCEPTED (Round 4) — READY_TO_MERGE_REVIEW
+- **Permanent PHPUnit Suite:** 13/13 tests passed (46 assertions). See `ShadowingRegressionVerificationTest.php`.
 - **E2E Evidence:** Verified via 8 integration tests + Real Playwright Browser E2E. See [E2E_EVIDENCE_ROUND4.md](file:///z:/home/pc/projects/shadowing-coordination/E2E_EVIDENCE_ROUND4.md).
 - **Root Cause:** `ShadowingPractice.php` had hardcoded `$lessonCode = 'shadowing_youtube_tekkon'` which loaded a legacy prototype lesson by default. The fallback chain (`?? ShadowingLesson::first()`) could load ANY lesson including invalid ones.
 - **Fix Applied:**

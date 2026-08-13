@@ -49,9 +49,10 @@ logical disk: media
 
 | Bug | Priority | Status | Reviewer | PR Branch |
 |---|---|---|---|---|
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `READY_FOR_RE_REVIEW_ROUND_4` | Architect | `fix/bug-004-005-round3` |
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `ACCEPTED (READY_TO_MERGE_REVIEW)` | Architect | `fix/bug-004-005-round3` |
 | **BUG-005** Null Score Cast | P0 | `ACCEPTED` | Architect | `fix/bug-004-005-round3` |
 
+**PHPUnit Suite:** 13/13 Passed (46 assertions, 0.95s).
 **E2E Evidence:** 8/8 Integration Tests + Real Playwright Browser E2E Passed. See `E2E_EVIDENCE_ROUND4.md`.
 
 ---
