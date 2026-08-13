@@ -49,12 +49,14 @@ logical disk: media
 
 | Feature / Bug | Priority | Status | Reviewer | PR Branch / Commit |
 |---|---|---|---|---|
-| **Phase ⑤ Recording** | P1 | `READY_FOR_RECORDING_REVIEW_V1` | Architect | `feat/shadowing-recording-media-persistence` (PR #3 open) |
+| **Phase ⑤ Recording** | P1 | `READY_FOR_RECORDING_RE_REVIEW_V3` | Architect | `feat/shadowing-recording-media-persistence` (PR #3 open) |
 | **Translation EN→VI V3** | P1 | `ACCEPTED / MERGED` | Architect | Merged PR #2 (`808b3b074f1ae641b3a8861e16a91ddd9b1fb495`) |
 | **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
 | **BUG-005** Null Score Cast | P0 | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
 
-**PHPUnit Suite:** 54/54 Passed (164 assertions, 1.52s).
+**PHPUnit Suite:** 60/60 Passed (177 assertions, 1.59s).
+**Playwright E2E Suite:** 10/10 Passed (100% reproducible browser automation).
+**EXPOSED_TOKEN_REVOKED:** `YES`
 **Evidence Documents:** See `RECORDING_EVIDENCE_V1.md`, `TRANSLATION_EVIDENCE_V3.md`.
 
 ---

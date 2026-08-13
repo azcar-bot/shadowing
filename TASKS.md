@@ -2,11 +2,11 @@
 
 ## Active Queue
 
-### [READY_FOR_RECORDING_REVIEW_V1] Phase ⑤: Student Recording — Private Media Persistence
+### [READY_FOR_RECORDING_RE_REVIEW_V3] Phase ⑤: Student Recording — Private Media Persistence
 - **Priority:** P1
-- **Status:** READY_FOR_RECORDING_REVIEW_V1 — Branch `feat/shadowing-recording-media-persistence` (PR #3 open)
-- **Scope:** Clean Architecture `ShadowingRecordingStorageContract` & `LaravelMediaRecordingStorageAdapter` bound to `Storage::disk('media')`, safe replacement & orphan prevention, DB metadata persistence (`disk`, `object_key`, `mime_type`, `size_bytes`, `duration_ms`), on-demand presigned URL generation, 18 permanent PHPUnit recording tests (54/54 total suite pass), local MinIO runtime verification, cross-user privacy isolation, and Alpine.js dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
-- **Storage Rules:** Obey ADR-004, ADR-005, ADR-007. Uses `Storage::disk('media')` ONLY.
+- **Status:** READY_FOR_RECORDING_RE_REVIEW_V3 — Branch `feat/shadowing-recording-media-persistence` (PR #3 open)
+- **Scope:** Clean Architecture `ShadowingRecordingStorageContract` & `LaravelMediaRecordingStorageAdapter` bound to `Storage::disk('media')`, safe replacement & orphan prevention, DB metadata persistence (`disk`, `object_key`, `mime_type`, `size_bytes`, `duration_ms`), on-demand presigned URL generation, 24 permanent PHPUnit recording tests (60/60 total suite pass), local MinIO runtime verification, cross-user privacy isolation, Alpine.js dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`), and reproducible Playwright browser E2E test suite (10/10 scenarios pass).
+- **Security & Integrity:** Purged hardcoded tokens (`EXPOSED_TOKEN_REVOKED = YES`), server-side magic byte MIME authority (`UploadedFile::getMimeType()`), presigned URLs never persisted in any DB table, real `duration_ms` measurement, published lesson access policy (`status === 'published'`), sanitized 500 error responses, kill switch (`shadowing.recording.enabled`), `lockForUpdate()` transaction safety, storage-first delete semantics.
 - **Dependencies:** Ready for Architect Review.
 
 ### [BLOCKED] Phase ⑥: AI Pronunciation Evaluation

@@ -10,6 +10,7 @@ use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSegment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Throwable;
 
@@ -24,6 +25,10 @@ class ShadowingRecordingController extends Controller
      */
     public function upload(Request $request): JsonResponse
     {
+        if (! config('shadowing.recording.enabled', true)) {
+            return response()->json(['success' => false, 'message' => 'Chức năng ghi âm hiện đang tạm tắt.'], 403);
+        }
+
         $user = Auth::user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Bạn cần đăng nhập để thực hiện ghi âm.'], 401);
@@ -38,7 +43,7 @@ class ShadowingRecordingController extends Controller
 
         $lesson = ShadowingLesson::find($request->input('lesson_id'));
         if (! $lesson) {
-            return response()->json(['success' => false, 'message' => 'Bài học không tồn tại.'], 44);
+            return response()->json(['success' => false, 'message' => 'Bài học không tồn tại.'], 404);
         }
 
         $segment = ShadowingSegment::find($request->input('segment_id'));
@@ -68,7 +73,18 @@ class ShadowingRecordingController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Lỗi lưu trữ bản ghi âm: ' . $e->getMessage()], 500);
+            Log::error('Shadowing recording upload internal error', [
+                'user_id' => $user->id,
+                'lesson_id' => $lesson->id,
+                'segment_id' => $segment->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi hệ thống khi tải lên file ghi âm. Vui lòng thử lại sau.',
+            ], 500);
         }
     }
 
@@ -97,7 +113,9 @@ class ShadowingRecordingController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
         } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Shadowing getPlaybackUrl error', ['public_id' => $publicId, 'exception' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => 'Lỗi hệ thống khi tải phát lại file ghi âm.'], 500);
         }
     }
 
@@ -118,11 +136,13 @@ class ShadowingRecordingController extends Controller
 
         try {
             $this->service->deleteRecording($user, $recording);
-            return response()->json(['success' => true, 'message' => 'Đã xóa bản ghi âm.']);
+            return response()->json(['success' => true, 'message' => 'Bản ghi âm đã được xóa.']);
         } catch (InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
         } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Shadowing deleteRecording error', ['public_id' => $publicId, 'exception' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => 'Lỗi hệ thống khi xóa file ghi âm.'], 500);
         }
     }
 }

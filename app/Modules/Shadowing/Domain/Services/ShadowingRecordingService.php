@@ -81,11 +81,12 @@ class ShadowingRecordingService
         $recording = null;
 
         try {
-            // Step B: DB Transaction to update/create recording record
+            // Step B: DB Transaction with lockForUpdate to prevent race conditions during concurrent re-records
             $recording = DB::transaction(function () use ($user, $lesson, $segment, $objectKey, $mimeType, $sizeBytes, $durationMs, &$oldObjectKey) {
                 $existing = ShadowingRecording::where('user_id', $user->id)
                     ->where('shadowing_lesson_id', $lesson->id)
                     ->where('shadowing_segment_id', $segment->id)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($existing) {
@@ -150,17 +151,17 @@ class ShadowingRecordingService
 
         $objectKey = $recording->object_key;
 
+        // Failure-safe delete semantics: storage deletion must succeed BEFORE removing DB row
+        if ($objectKey) {
+            $deleted = $this->storage->delete($objectKey);
+            if (! $deleted) {
+                throw new RuntimeException("Không thể xóa file ghi âm khỏi hệ thống lưu trữ media.");
+            }
+        }
+
         DB::transaction(function () use ($recording) {
             $recording->delete();
         });
-
-        if ($objectKey) {
-            try {
-                $this->storage->delete($objectKey);
-            } catch (Throwable $e) {
-                Log::warning("Failed to delete object from media storage: {$objectKey}", ['error' => $e->getMessage()]);
-            }
-        }
 
         return true;
     }
@@ -170,6 +171,13 @@ class ShadowingRecordingService
      */
     public function authorizeLessonAccess(User $user, ShadowingLesson $lesson): void
     {
+        if ($lesson->status !== 'published' && ! $user->isAdmin()) {
+            if ($lesson->status === 'review_required') {
+                throw new InvalidArgumentException("Bài học đang chờ phê duyệt (review_required). Bạn không thể ghi âm bài này.");
+            }
+            throw new InvalidArgumentException("Bài học chưa được xuất bản (status: {$lesson->status}). Bạn không thể ghi âm bài này.");
+        }
+
         if ($lesson->visibility === 'private' && $lesson->user_id !== $user->id && ! $user->isAdmin()) {
             throw new InvalidArgumentException("Bạn không có quyền truy cập bài học cá nhân này.");
         }
@@ -210,23 +218,38 @@ class ShadowingRecordingService
         }
 
         $allowedMimes = config('shadowing.recording.allowed_mime_types', [
-            'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/m4a', 'audio/ogg', 'audio/wav', 'audio/x-matroska'
+            'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/m4a', 'audio/ogg', 'audio/wav', 'audio/x-matroska', 'audio/mpeg', 'audio/mp3', 'video/webm'
         ]);
 
-        $mimeType = strtolower($file->getClientMimeType() ?: $file->getMimeType());
-        $cleanMime = explode(';', $mimeType)[0];
+        $serverMime = strtolower($file->getMimeType() ?: '');
+        $clientMime = strtolower($file->getClientMimeType() ?: '');
+
+        // Reject dangerous non-audio server MIME types even if client spoofed audio header
+        $forbiddenTypes = ['text/x-php', 'application/x-msdownload', 'text/html', 'application/x-executable', 'text/plain', 'application/json'];
+        if (in_array($serverMime, $forbiddenTypes, true)) {
+            throw new InvalidArgumentException("Định dạng file thực tế ('{$serverMime}') không được chấp nhận.");
+        }
+
+        $allowedMimes = config('shadowing.recording.allowed_mime_types', [
+            'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/m4a', 'audio/ogg', 'audio/wav', 'audio/x-matroska', 'video/webm', 'video/mp4'
+        ]);
 
         $matched = false;
-        foreach ($allowedMimes as $allowed) {
-            $cleanAllowed = explode(';', strtolower($allowed))[0];
-            if ($cleanMime === $cleanAllowed || $mimeType === strtolower($allowed)) {
-                $matched = true;
-                break;
+        $checkMimes = array_unique(array_filter([$serverMime, $clientMime]));
+        foreach ($checkMimes as $candidate) {
+            $cleanCandidate = explode(';', strtolower($candidate))[0];
+            foreach ($allowedMimes as $allowed) {
+                $cleanAllowed = explode(';', strtolower($allowed))[0];
+                if ($cleanCandidate === $cleanAllowed || strtolower($candidate) === strtolower($allowed)) {
+                    $matched = true;
+                    break 2;
+                }
             }
         }
 
         if (! $matched) {
-            throw new InvalidArgumentException("Định dạng file ghi âm ('{$mimeType}') không được hỗ trợ.");
+            $displayMime = $serverMime ?: $clientMime;
+            throw new InvalidArgumentException("Định dạng file ghi âm ('{$displayMime}') không được hỗ trợ.");
         }
     }
 }

@@ -149,6 +149,7 @@ class ShadowingPractice extends Component
                 'end_ms' => (int) $s->end_ms,
                 'transcript' => $isChallenge ? '••••••••••••••••••••••••' : $s->transcript,
                 'translation_vi' => $isChallenge ? '••••••••••••••••' : $s->translation_vi,
+                'translation' => $isChallenge ? '••••••••••••••••' : ($s->translation_vi ?? ''),
                 'ipa' => $s->ipa,
                 'speaker' => $s->speaker,
                 'difficulty' => $s->difficulty,
@@ -222,7 +223,7 @@ class ShadowingPractice extends Component
                 userId: $userId,
                 segmentId: $segment->id,
                 mode: $this->practiceMode,
-                audioUrl: $audioUrl,
+                audioUrl: null,
                 durationMs: $durationMs,
                 score: $score
             );

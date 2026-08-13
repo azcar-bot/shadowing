@@ -450,4 +450,142 @@ class ShadowingRecordingTest extends TestCase
         $this->assertNotEquals('minio', $recording->disk);
         $this->assertNotEquals('s3', $recording->disk);
     }
+
+    #[Test]
+    public function recording_upload_never_persists_temporary_url_in_any_shadowing_attempt(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        [$lesson, $seg1] = $this->createLessonAndSegment();
+
+        $component = Livewire::test(ShadowingPractice::class, ['lessonCode' => $lesson->code]);
+        $component->call('recordAttempt', null, 'http://minio:9000/signed-temp-url?...REDACTED', 4000);
+
+        $this->assertDatabaseHas('user_shadowing_attempts', [
+            'user_id' => $user->id,
+            'shadowing_segment_id' => $seg1->id,
+            'audio_recording_url' => null,
+        ]);
+        $this->assertDatabaseMissing('user_shadowing_attempts', [
+            'audio_recording_url' => 'http://minio:9000/signed-temp-url?...REDACTED',
+        ]);
+    }
+
+    #[Test]
+    public function spoofed_audio_client_mime_with_non_audio_contents_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        [$lesson, $seg1] = $this->createLessonAndSegment();
+
+        // Create a file containing PHP executable script but declaring client MIME audio/webm
+        $spoofedFile = UploadedFile::fake()->createWithContent('malicious.php', '<?php phpinfo(); ?>', 'audio/webm');
+
+        /** @var ShadowingRecordingService $service */
+        $service = app(ShadowingRecordingService::class);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        try {
+            $service->storeRecording($user, $lesson, $seg1, $spoofedFile, 1000);
+        } catch (InvalidArgumentException $e) {
+            $this->assertTrue(
+                str_contains($e->getMessage(), 'không được hỗ trợ') || str_contains($e->getMessage(), 'không được chấp nhận'),
+                "Expected rejection message for spoofed mime file, got: " . $e->getMessage()
+            );
+            throw $e;
+        }
+    }
+
+    #[Test]
+    public function student_cannot_upload_to_unpublished_lesson(): void
+    {
+        $user = User::factory()->create();
+        [$lesson, $seg1] = $this->createLessonAndSegment();
+        $lesson->update(['status' => 'draft']);
+
+        $file = UploadedFile::fake()->create('test.webm', 100, 'audio/webm');
+
+        /** @var ShadowingRecordingService $service */
+        $service = app(ShadowingRecordingService::class);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Bài học chưa được xuất bản');
+
+        $service->storeRecording($user, $lesson, $seg1, $file, 2000);
+    }
+
+    #[Test]
+    public function student_cannot_upload_to_review_required_lesson(): void
+    {
+        $user = User::factory()->create();
+        [$lesson, $seg1] = $this->createLessonAndSegment();
+        $lesson->update(['status' => 'review_required']);
+
+        $file = UploadedFile::fake()->create('test.webm', 100, 'audio/webm');
+
+        /** @var ShadowingRecordingService $service */
+        $service = app(ShadowingRecordingService::class);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Bài học đang chờ phê duyệt');
+
+        $service->storeRecording($user, $lesson, $seg1, $file, 2000);
+    }
+
+    #[Test]
+    public function disabled_recording_cannot_upload(): void
+    {
+        config(['shadowing.recording.enabled' => false]);
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        [$lesson, $seg1] = $this->createLessonAndSegment();
+
+        $file = UploadedFile::fake()->create('test.webm', 100, 'audio/webm');
+
+        $response = $this->postJson('/shadowing/recordings/upload', [
+            'audio' => $file,
+            'lesson_id' => $lesson->id,
+            'segment_id' => $seg1->id,
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJsonPath('message', 'Chức năng ghi âm hiện đang tạm tắt.');
+    }
+
+    #[Test]
+    public function failed_storage_deletion_retains_db_metadata(): void
+    {
+        $mockStorage = $this->createMock(ShadowingRecordingStorageContract::class);
+        $mockStorage->expects($this->once())
+            ->method('delete')
+            ->willReturn(false); // Storage delete fails!
+
+        $service = new ShadowingRecordingService($mockStorage);
+
+        $user = User::factory()->create();
+        [$lesson, $seg1] = $this->createLessonAndSegment();
+
+        $rec = ShadowingRecording::create([
+            'user_id' => $user->id,
+            'shadowing_lesson_id' => $lesson->id,
+            'shadowing_segment_id' => $seg1->id,
+            'disk' => 'media',
+            'object_key' => 'shadowing/recordings/test.webm',
+            'mime_type' => 'audio/webm',
+            'size_bytes' => 100,
+            'duration_ms' => 2000,
+        ]);
+
+        try {
+            $service->deleteRecording($user, $rec);
+            $this->fail('Expected RuntimeException on failed storage delete');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('Không thể xóa file ghi âm', $e->getMessage());
+        }
+
+        // DB record MUST NOT be deleted if storage delete failed
+        $this->assertDatabaseHas('shadowing_recordings', ['id' => $rec->id]);
+    }
 }
