@@ -5,6 +5,8 @@ namespace Tests\Feature\Modules\Shadowing;
 use App\Livewire\ShadowingPractice;
 use App\Models\User;
 use App\Modules\Shadowing\Domain\Contracts\TranslationProviderContract;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderPermanentException;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderTransientException;
 use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderUnavailableException;
 use App\Modules\Shadowing\Domain\Jobs\ProcessShadowingTranslationJob;
 use App\Modules\Shadowing\Domain\Services\ShadowingLessonFactoryService;
@@ -16,10 +18,10 @@ use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSource;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSourceChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
-use RuntimeException;
 use Tests\TestCase;
 
 class ShadowingTranslationTest extends TestCase
@@ -122,7 +124,6 @@ class ShadowingTranslationTest extends TestCase
         $result1 = $service->translateSource($source, 'vi-v1');
         $this->assertTrue($result1);
 
-        // 2nd call with all chunks present -> skips provider
         $result2 = $service->translateSource($source, 'vi-v1');
         $this->assertTrue($result2);
     }
@@ -213,13 +214,9 @@ class ShadowingTranslationTest extends TestCase
         $mockProvider->method('getModelName')->willReturn('mock');
 
         $service = new ShadowingTranslationService($mockProvider);
+        $result = $service->translateSource($source);
 
-        try {
-            $service->translateSource($source);
-        } catch (RuntimeException $e) {
-            // Expected
-        }
-
+        $this->assertFalse($result);
         $this->assertEquals('failed', $source->fresh()->translation_status);
         $this->assertNotNull($source->fresh()->translation_error);
     }
@@ -232,7 +229,7 @@ class ShadowingTranslationTest extends TestCase
         $mockProvider = $this->createMock(TranslationProviderContract::class);
         $mockProvider->expects($this->once())
             ->method('translateChunks')
-            ->willThrowException(new RuntimeException("API Connection Timeout"));
+            ->willThrowException(new TranslationProviderTransientException("API Connection Timeout"));
         $mockProvider->method('getProviderName')->willReturn('mock');
         $mockProvider->method('getModelName')->willReturn('mock');
 
@@ -240,8 +237,8 @@ class ShadowingTranslationTest extends TestCase
 
         try {
             $service->translateSource($source);
-        } catch (RuntimeException $e) {
-            // Expected transient error re-thrown
+        } catch (TranslationProviderTransientException $e) {
+            // Expected transient exception re-thrown for Queue
         }
 
         $this->assertEquals('failed', $source->fresh()->translation_status);
@@ -322,13 +319,11 @@ class ShadowingTranslationTest extends TestCase
     public function completed_metadata_with_missing_chunk_retranslates(): void
     {
         $source = $this->createValidSourceWithChunks();
-        // Mark source as completed, but chunk 2 is missing translation_vi
         $source->update([
             'translation_status' => 'completed',
             'translation_version' => 'vi-v1',
         ]);
         $source->chunks[0]->update(['translation_vi' => 'Dịch 1']);
-        // chunk 2 has null translation_vi
 
         $mockProvider = $this->createMock(TranslationProviderContract::class);
         $mockProvider->expects($this->once())
@@ -372,13 +367,13 @@ class ShadowingTranslationTest extends TestCase
 
         $mockProvider = $this->createMock(TranslationProviderContract::class);
         $mockProvider->method('translateChunks')
-            ->willThrowException(new RuntimeException("503 Service Unavailable"));
+            ->willThrowException(new TranslationProviderTransientException("503 Service Unavailable"));
         $mockProvider->method('getProviderName')->willReturn('mock');
         $mockProvider->method('getModelName')->willReturn('mock');
 
         $service = new ShadowingTranslationService($mockProvider);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(TranslationProviderTransientException::class);
         $this->expectExceptionMessage("503 Service Unavailable");
 
         $service->translateSource($source);
@@ -414,14 +409,13 @@ class ShadowingTranslationTest extends TestCase
     #[Test]
     public function hundred_plus_chunks_are_translated_in_bounded_batches(): void
     {
-        // Create source with 55 chunks
         $source = $this->createValidSourceWithChunks('batch_test_100', 55);
 
         config(['shadowing.translation.batch_size' => 20]);
 
         $callCount = 0;
         $mockProvider = $this->createMock(TranslationProviderContract::class);
-        $mockProvider->expects($this->exactly(3)) // 55 chunks / 20 batch_size = 3 batches
+        $mockProvider->expects($this->exactly(3))
             ->method('translateChunks')
             ->willReturnCallback(function (array $items) use (&$callCount) {
                 $callCount++;
@@ -443,5 +437,120 @@ class ShadowingTranslationTest extends TestCase
         $this->assertTrue($result);
         $this->assertEquals(3, $callCount);
         $this->assertEquals('Bản dịch chunk 55', $source->chunks()->where('chunk_index', 55)->first()->translation_vi);
+    }
+
+    // =========================================================================
+    // ROUND 3 HARDENING TESTS
+    // =========================================================================
+
+    #[Test]
+    public function disabled_translation_does_not_dispatch_job(): void
+    {
+        Bus::fake();
+        config(['shadowing.translation.enabled' => false]);
+
+        $source = $this->createValidSourceWithChunks();
+        /** @var ShadowingLessonFactoryService $factory */
+        $factory = app(ShadowingLessonFactoryService::class);
+
+        $factory->createOfficialLesson($source, ['code' => 'test_disabled_dispatch_' . time()]);
+
+        Bus::assertNotDispatched(ProcessShadowingTranslationJob::class);
+    }
+
+    #[Test]
+    public function configured_provider_is_resolved_correctly(): void
+    {
+        config(['shadowing.translation.provider' => 'deepseek']);
+        $resolved = app(TranslationProviderContract::class);
+        $this->assertInstanceOf(DeepSeekTranslationAdapter::class, $resolved);
+
+        config(['shadowing.translation.provider' => 'unsupported_vendor']);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unsupported translation provider');
+        app(TranslationProviderContract::class);
+    }
+
+    #[Test]
+    public function http_401_does_not_retry(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')
+            ->willThrowException(new TranslationProviderPermanentException("HTTP 401 Unauthorized"));
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+
+        // Does NOT re-throw TranslationProviderPermanentException, sets status failed and returns false
+        $result = $service->translateSource($source);
+
+        $this->assertFalse($result);
+        $this->assertEquals('failed', $source->fresh()->translation_status);
+        $this->assertStringContainsString('HTTP 401 Unauthorized', $source->fresh()->translation_error);
+    }
+
+    #[Test]
+    public function http_429_is_retryable(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')
+            ->willThrowException(new TranslationProviderTransientException("HTTP 429 Too Many Requests"));
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+
+        $this->expectException(TranslationProviderTransientException::class);
+        $this->expectExceptionMessage("HTTP 429 Too Many Requests");
+
+        $service->translateSource($source);
+    }
+
+    #[Test]
+    public function http_503_is_retryable(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $mockProvider->method('translateChunks')
+            ->willThrowException(new TranslationProviderTransientException("HTTP 503 Service Unavailable"));
+        $mockProvider->method('getProviderName')->willReturn('mock');
+        $mockProvider->method('getModelName')->willReturn('mock');
+
+        $service = new ShadowingTranslationService($mockProvider);
+
+        $this->expectException(TranslationProviderTransientException::class);
+        $this->expectExceptionMessage("HTTP 503 Service Unavailable");
+
+        $service->translateSource($source);
+    }
+
+    #[Test]
+    public function concurrent_translation_lock_contention_is_retryable(): void
+    {
+        $source = $this->createValidSourceWithChunks();
+
+        // Lock the source manually
+        $lockKey = "shadowing_translation_lock_{$source->id}";
+        $lock = Cache::lock($lockKey, 240);
+        $lock->get();
+
+        $mockProvider = $this->createMock(TranslationProviderContract::class);
+        $service = new ShadowingTranslationService($mockProvider);
+
+        // Lock contention throws TranslationProviderTransientException so Queue retries later
+        $this->expectException(TranslationProviderTransientException::class);
+        $this->expectExceptionMessage("Translation lock contention");
+
+        try {
+            $service->translateSource($source);
+        } finally {
+            $lock->release();
+        }
     }
 }

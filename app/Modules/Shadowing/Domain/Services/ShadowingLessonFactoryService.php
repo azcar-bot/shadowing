@@ -71,8 +71,10 @@ class ShadowingLessonFactoryService
             return $lesson;
         });
 
-        // Dispatch queued translation job asynchronously
-        ProcessShadowingTranslationJob::dispatch($source->id);
+        // Dispatch queued translation job asynchronously if enabled
+        if (config('shadowing.translation.enabled', true)) {
+            ProcessShadowingTranslationJob::dispatch($source->id);
+        }
 
         return $lesson;
     }
@@ -136,8 +138,10 @@ class ShadowingLessonFactoryService
             return $lesson;
         });
 
-        // Dispatch queued translation job asynchronously
-        ProcessShadowingTranslationJob::dispatch($source->id);
+        // Dispatch queued translation job asynchronously if enabled
+        if (config('shadowing.translation.enabled', true)) {
+            ProcessShadowingTranslationJob::dispatch($source->id);
+        }
 
         return $lesson;
     }

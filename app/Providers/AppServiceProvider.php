@@ -83,7 +83,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(EntitlementChecker::class, CheckEntitlement::class);
 
         $this->app->bind(ClassroomAssignmentReader::class, FindClassroomAssignmentForStudent::class);
-        $this->app->bind(\App\Modules\Shadowing\Domain\Contracts\TranslationProviderContract::class, \App\Modules\Shadowing\Infrastructure\Adapters\DeepSeekTranslationAdapter::class);
+        $this->app->bind(\App\Modules\Shadowing\Domain\Contracts\TranslationProviderContract::class, function ($app) {
+            $provider = config('shadowing.translation.provider', 'deepseek');
+            return match ($provider) {
+                'deepseek' => $app->make(\App\Modules\Shadowing\Infrastructure\Adapters\DeepSeekTranslationAdapter::class),
+                default => throw new \InvalidArgumentException("Unsupported translation provider configured: '{$provider}'"),
+            };
+        });
         // Identity module contracts
         $this->app->bind(AuditLogger::class, EloquentAuditLogger::class);
         $this->app->bind(OtpChallenger::class, EmailOtpHandler::class);

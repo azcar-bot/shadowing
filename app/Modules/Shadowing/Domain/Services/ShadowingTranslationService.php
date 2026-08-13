@@ -3,7 +3,8 @@
 namespace App\Modules\Shadowing\Domain\Services;
 
 use App\Modules\Shadowing\Domain\Contracts\TranslationProviderContract;
-use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderUnavailableException;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderPermanentException;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderTransientException;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingLesson;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSegment;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSource;
@@ -12,7 +13,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use RuntimeException;
 use Throwable;
 
 class ShadowingTranslationService
@@ -32,15 +32,15 @@ class ShadowingTranslationService
      * Translates a ShadowingSource into Vietnamese and persists translations.
      * Idempotent: Does not call provider if already completed for the given version and all chunks present unless $force = true.
      *
-     * @throws InvalidArgumentException if source has permanent validation error (invalid source, uncompleted, etc).
-     * @throws RuntimeException / TranslationProviderUnavailableException if transient provider error occurs (allows Queue retry).
+     * @throws InvalidArgumentException | TranslationProviderPermanentException for non-retryable errors.
+     * @throws TranslationProviderTransientException for retryable transient errors (allows Queue retry).
      */
     public function translateSource(ShadowingSource $source, ?string $targetVersion = null, bool $force = false): bool
     {
         $targetVersion = $targetVersion ?? config('shadowing.translation.version', 'vi-v1');
         $batchSize = (int) config('shadowing.translation.batch_size', 25);
 
-        // 1. PERMANENT VALIDATION GATES (Do not retry in Queue)
+        // 1. PERMANENT VALIDATION GATES (Non-retryable)
         if (empty($source->transcript_source) || in_array(strtolower($source->transcript_source), $this->forbiddenSources, true)) {
             $err = "Cannot translate ShadowingSource ID {$source->id} with forbidden transcript_source ('{$source->transcript_source}').";
             $source->update([
@@ -80,13 +80,13 @@ class ShadowingTranslationService
             return true;
         }
 
-        // 3. CONCURRENCY LOCK (Prevent parallel translation workers)
+        // 3. CONCURRENCY LOCK (Job timeout is 120s -> Lock TTL = 240s safety margin)
         $lockKey = "shadowing_translation_lock_{$source->id}";
-        $lock = Cache::lock($lockKey, 120);
+        $lock = Cache::lock($lockKey, 240);
 
         if (! $lock->get()) {
             Log::warning("ShadowingSource ID {$source->id} translation is currently locked by another worker.");
-            return false;
+            throw new TranslationProviderTransientException("Translation lock contention for source ID {$source->id}. Another worker is processing this source.");
         }
 
         try {
@@ -106,7 +106,6 @@ class ShadowingTranslationService
             foreach ($chunkBatches as $batch) {
                 $batchItems = [];
                 foreach ($batch as $chunk) {
-                    // Find index in overall list for global prev/next context
                     $globalIdx = $chunkList->search(fn ($c) => $c->id === $chunk->id);
 
                     $prevTranscript = ($globalIdx !== false && $globalIdx > 0) ? $chunkList[$globalIdx - 1]->transcript : null;
@@ -132,7 +131,7 @@ class ShadowingTranslationService
             // Validate that every chunk received a valid translation
             foreach ($chunks as $chunk) {
                 if (! isset($allChunkMap[$chunk->chunk_index]) || empty(trim($allChunkMap[$chunk->chunk_index]))) {
-                    throw new RuntimeException("Missing translation for chunk_index {$chunk->chunk_index} in provider batch output.");
+                    throw new TranslationProviderPermanentException("Missing translation for chunk_index {$chunk->chunk_index} in provider batch output.");
                 }
             }
 
@@ -167,12 +166,12 @@ class ShadowingTranslationService
                 'translation_error'  => $e->getMessage(),
             ]);
 
-            // Re-throw transient network/HTTP errors so Laravel Queue retries up to $tries
-            // Do NOT re-throw permanent configuration errors (missing API key)
-            if ($e instanceof RuntimeException && ! ($e instanceof TranslationProviderUnavailableException)) {
+            // Re-throw transient provider exceptions so Laravel Queue retries up to $tries
+            if ($e instanceof TranslationProviderTransientException) {
                 throw $e;
             }
 
+            // Permanent errors (401, 403, missing key, invalid source) do not re-throw
             return false;
 
         } finally {

@@ -3,10 +3,11 @@
 namespace App\Modules\Shadowing\Infrastructure\Adapters;
 
 use App\Modules\Shadowing\Domain\Contracts\TranslationProviderContract;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderPermanentException;
+use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderTransientException;
 use App\Modules\Shadowing\Domain\Exceptions\TranslationProviderUnavailableException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 class DeepSeekTranslationAdapter implements TranslationProviderContract
 {
@@ -56,9 +57,12 @@ class DeepSeekTranslationAdapter implements TranslationProviderContract
             ];
         }, $items);
 
+        // STRENGTHENED SYSTEM PROMPT: Complete semantic translation without omitting any clause
         $systemPrompt = "You are a professional IELTS English-to-Vietnamese translator. " .
-            "Translate each natural speaking chunk into fluent, natural conversational Vietnamese. " .
-            "Use the provided context_prev and context_next to ensure accurate context, tone, and sentence flow. " .
+            "Translate ALL semantic content, clauses, and sentences in each chunk accurately into fluent, natural conversational Vietnamese. " .
+            "Do NOT omit any sentence, clause, or detail. Do NOT summarize or add extra commentary/explanations. " .
+            "Preserve proper nouns, names, and social media handles appropriately. " .
+            "Use the provided context_prev and context_next to ensure proper tone, style, and sentence flow. " .
             "Return valid JSON matching: {\"translations\": [{\"chunk_index\": 1, \"translation_vi\": \"...\"}]}";
 
         $response = Http::withHeaders([
@@ -71,15 +75,25 @@ class DeepSeekTranslationAdapter implements TranslationProviderContract
                 ['role' => 'user', 'content' => json_encode(['items' => $promptItems], JSON_UNESCAPED_UNICODE)],
             ],
             'response_format' => ['type' => 'json_object'],
-            'temperature'     => 0.3,
+            'temperature'     => 0.2,
         ]);
 
         if (! $response->successful()) {
+            $status = $response->status();
+            $body = $response->body();
+
             Log::error('DeepSeek Translation API HTTP Error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
+                'status' => $status,
+                'body'   => $body,
             ]);
-            throw new RuntimeException("Translation provider API error HTTP {$response->status()}: " . $response->body());
+
+            // TRANSIENT ERRORS (HTTP 408, 429, 5xx) -> Retryable
+            if (in_array($status, [408, 429], true) || $status >= 500) {
+                throw new TranslationProviderTransientException("Translation provider API HTTP {$status}: {$body}");
+            }
+
+            // PERMANENT ERRORS (HTTP 400, 401, 403, 404, 422) -> Non-retryable
+            throw new TranslationProviderPermanentException("Translation provider API HTTP {$status}: {$body}");
         }
 
         $responseData = $response->json();
@@ -87,7 +101,7 @@ class DeepSeekTranslationAdapter implements TranslationProviderContract
         $parsed = json_decode($contentStr, true);
 
         if (! is_array($parsed) || ! isset($parsed['translations']) || ! is_array($parsed['translations'])) {
-            throw new RuntimeException("Translation provider returned malformed JSON structure.");
+            throw new TranslationProviderPermanentException("Translation provider returned malformed JSON structure.");
         }
 
         return $this->formatAndValidateOutput($items, $parsed['translations']);
@@ -106,7 +120,7 @@ class DeepSeekTranslationAdapter implements TranslationProviderContract
         foreach ($originalItems as $orig) {
             $idx = $orig['chunk_index'];
             if (! isset($mapByChunk[$idx]) || empty($mapByChunk[$idx])) {
-                throw new RuntimeException("Missing translation for chunk_index {$idx} in provider output.");
+                throw new TranslationProviderPermanentException("Missing translation for chunk_index {$idx} in provider output.");
             }
             $final[] = [
                 'chunk_index'    => $idx,
