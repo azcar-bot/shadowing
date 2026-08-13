@@ -2,16 +2,16 @@
 
 ## Active Queue
 
-### [READY_FOR_RECORDING_SPEC] Phase ⑤: Student Recording — Cloudflare R2 / MinIO Persistence
+### [READY_FOR_RECORDING_REVIEW_V1] Phase ⑤: Student Recording — Private Media Persistence
 - **Priority:** P1
-- **Status:** READY_FOR_RECORDING_SPEC — Branch `feat/shadowing-recording-media-persistence`
-- **Scope:** Upload client-side WebM recording Blobs via `Storage::disk('media')` to private object storage, persist object metadata in DB (NOT presigned URLs), and enable persistent dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
-- **Storage Rules:** See ADR-004 and ADR-005 in DECISIONS.md. Use `Storage::disk('media')` ONLY. FORBIDDEN: hardcoded `r2`, `minio`, or `s3` disks; FORBIDDEN: presigned URL DB persistence.
-- **Dependencies:** Translation EN→VI MERGED (PR #2). Awaiting technical specification from Architect.
+- **Status:** READY_FOR_RECORDING_REVIEW_V1 — Branch `feat/shadowing-recording-media-persistence` (PR #3 open)
+- **Scope:** Clean Architecture `ShadowingRecordingStorageContract` & `LaravelMediaRecordingStorageAdapter` bound to `Storage::disk('media')`, safe replacement & orphan prevention, DB metadata persistence (`disk`, `object_key`, `mime_type`, `size_bytes`, `duration_ms`), on-demand presigned URL generation, 18 permanent PHPUnit recording tests (54/54 total suite pass), local MinIO runtime verification, cross-user privacy isolation, and Alpine.js dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
+- **Storage Rules:** Obey ADR-004, ADR-005, ADR-007. Uses `Storage::disk('media')` ONLY.
+- **Dependencies:** Ready for Architect Review.
 
 ### [BLOCKED] Phase ⑥: AI Pronunciation Evaluation
 - **Scope:** Deepgram / DeepSeek STT & phonetic alignment evaluation.
-- **Dependencies:** BLOCKED until Phase ⑤ Recording is complete.
+- **Dependencies:** BLOCKED until Phase ⑤ Recording is ACCEPTED and MERGED into `main`.
 
 ---
 

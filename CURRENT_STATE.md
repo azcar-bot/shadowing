@@ -49,13 +49,13 @@ logical disk: media
 
 | Feature / Bug | Priority | Status | Reviewer | PR Branch / Commit |
 |---|---|---|---|---|
-| **Phase ⑤ Recording** | P1 | `READY_FOR_RECORDING_SPEC` | Architect | `feat/shadowing-recording-media-persistence` |
+| **Phase ⑤ Recording** | P1 | `READY_FOR_RECORDING_REVIEW_V1` | Architect | `feat/shadowing-recording-media-persistence` (PR #3 open) |
 | **Translation EN→VI V3** | P1 | `ACCEPTED / MERGED` | Architect | Merged PR #2 (`808b3b074f1ae641b3a8861e16a91ddd9b1fb495`) |
 | **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
 | **BUG-005** Null Score Cast | P0 | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
 
-**PHPUnit Suite:** 36/36 Passed (114 assertions, 1.24s).
-**Evidence Documents:** See `TRANSLATION_EVIDENCE_V1.md`, `TRANSLATION_EVIDENCE_V2.md`, `TRANSLATION_EVIDENCE_V3.md`.
+**PHPUnit Suite:** 54/54 Passed (164 assertions, 1.52s).
+**Evidence Documents:** See `RECORDING_EVIDENCE_V1.md`, `TRANSLATION_EVIDENCE_V3.md`.
 
 ---
 
@@ -72,11 +72,12 @@ logical disk: media
 | Weak Segment Filter | `WIRED` | Livewire `$weakOnlyFilter`, dimming mastered cards, skip navigation |
 | Nullable Scores | `VERIFIED` | Migration applied, service handles null correctly |
 | Translation EN→VI | `VERIFIED` | 23 permanent tests, DeepSeek adapter, dynamic config control, transient retryable vs permanent exception classification, network error handling, queued job `$timeout = 300s`, Lock TTL `420s`, bounded batching (25 chunks), real Vietnamese evidence |
+| Student Recording | `VERIFIED` | 18 permanent tests, logical `media` disk, Clean Architecture storage contract, safe object swap & replacement, DB metadata persistence, MinIO runtime verification, dual-audio comparison playback |
 
 ---
 
 ## 4. Pending Work (Ordered)
 
-1. 🟢 **Translation EN→VI V3 Final** — `ACCEPTED / MERGED` (PR #2, Merge Commit `808b3b074f1ae641b3a8861e16a91ddd9b1fb495`, 36/36 tests passed)
-2. ⏳ **Phase ⑤ Recording** — `READY_FOR_RECORDING_SPEC` (Branch `feat/shadowing-recording-media-persistence`, awaiting spec from Architect)
-3. 🔒 **Phase ⑥ AI Pronunciation** — `BLOCKED until Phase ⑤ Recording is complete`
+1. 🟢 **Translation EN→VI V3 Final** — `ACCEPTED / MERGED` (PR #2, Merge Commit `808b3b074f1ae641b3a8861e16a91ddd9b1fb495`)
+2. 🟢 **Phase ⑤ Recording** — `READY_FOR_RECORDING_REVIEW_V1` (Branch `feat/shadowing-recording-media-persistence`, 54/54 tests passed)
+3. 🔒 **Phase ⑥ AI Pronunciation** — `BLOCKED until Phase ⑤ Recording is ACCEPTED/MERGED`

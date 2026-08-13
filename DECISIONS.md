@@ -64,3 +64,15 @@
   6. **Context-Aware Translation:** Provider requests supply `prev_transcript`, `current`, and `next_transcript` for natural conversational Vietnamese.
   7. **Batching:** Bounded batch processing (default `batch_size = 25`) prevents payload timeouts on 100+ chunk transcripts.
 
+## ADR-007: Student Recording Private Persistence & Dual-Audio Comparison
+- **Date:** 2026-08-13
+- **Status:** APPROVED — LOCKED
+- **Context:** Student practice requires recording voice per segment, storing audio privately, and enabling side-by-side comparison (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
+- **Decision:**
+  1. **Clean Architecture Storage Adapter:** `ShadowingRecordingStorageContract` bound to `LaravelMediaRecordingStorageAdapter` which uses `Storage::disk('media')` exclusively.
+  2. **Safe Replacement & Orphan Prevention:** On re-recording a segment, new object is uploaded first ➔ DB transaction updates metadata row ➔ If DB fails, newly uploaded object is deleted to prevent orphans ➔ After DB success, previous object is deleted from storage.
+  3. **On-Demand Presigned Playback URLs:** Buckets are private. Playback URLs generated via `temporaryUrl($key, $ttl)` on demand.
+  4. **Strict Authorization & User Isolation:** Recordings are private to the owning user (`user_id`). Access by other users returns `403 Forbidden`.
+  5. **Mutually Exclusive Dual-Audio Playback:** Triggering `playUserAudio()` pauses sample audio/video playback; triggering sample audio playback pauses `playUserAudio()`.
+
+
