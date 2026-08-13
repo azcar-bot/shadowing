@@ -23,13 +23,40 @@
                  [ShadowingPractice (Livewire 4)]
 ```
 
-- **Caption Extraction:** `youtube-transcript-api` via host HTTP proxy (`http://host.docker.internal:9876`). Primary status: `VERIFIED & FUNCTIONAL`.
-- **Chunk Segmentation:** `NaturalSpeakingChunkEngineService` enforcing pause splits (350ms), clause markers, and bad ending word avoidances. Status: `VERIFIED & FUNCTIONAL`.
-- **Practice Workspace:** SFC Livewire 4 + Alpine.js engine with keyboard shortcuts (`Space`, `R`, `←/→`, `-/+`, `Z`, `M`, `L`), 3 practice modes, 3 loop modes, and per-chunk mastery tracking.
+### Storage Architecture (ADR-004 — LOCKED)
+
+```
+Shadowing Recording
+        ↓
+Laravel Storage
+        ↓
+logical disk: media
+        ↓
+ ┌─────────────────────────────┐
+ │ Production → Cloudflare R2  │
+ │ Local      → MinIO          │
+ │ Tests      → fake(media)    │
+ └─────────────────────────────┘
+```
+
+- Business code: `Storage::disk('media')` ONLY.
+- **FORBIDDEN:** `Storage::disk('r2')`, `Storage::disk('minio')`, `Storage::disk('s3')`.
+- DB stores `object_key`, NOT presigned URL. See ADR-005.
 
 ---
 
-## 2. Implemented Features (Verified)
+## 2. Current Blockers
+
+| Bug | Priority | Status | Reviewer |
+|---|---|---|---|
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | NEEDS_FIX (Round 2) | Architect |
+| **BUG-005** Null Score Cast | P0 | OPEN | — |
+
+**⚠️ Phase ⑤ (Recording) and Phase ⑥ (AI Eval) are BLOCKED until BUG-004 receives `ACCEPT` from Architect.**
+
+---
+
+## 3. Implemented Features (Verified)
 
 | Feature | State | Verification Method |
 |---|---|---|
@@ -40,10 +67,14 @@
 | Quick Rewind (-2s) | `WIRED` | `quickRewind(2.0)` timestamp seek |
 | Per-Chunk Status | `WIRED` | Migration `000015` (`mastery_status`), Livewire progress tracking, sidebar dot badges |
 | Weak Segment Filter | `WIRED` | Livewire `$weakOnlyFilter`, dimming mastered cards, skip navigation |
+| Nullable Scores | `VERIFIED` | Migration applied, service handles null correctly |
 
 ---
 
-## 3. Pending Work
+## 4. Pending Work (Ordered)
 
-- [ ] **Phase ⑤ Recording Upload:** WebM `MediaRecorder` blob upload to S3/MinIO & `user_shadowing_attempts.audio_recording_url` persistence.
-- [ ] **Phase ⑥ AI Pronunciation Evaluation:** Deepgram / DeepSeek STT & phonetic alignment evaluation.
+1. ✅ **FIX BUG-004** — Remove hardcoded lesson code, safe fallback, legacy cleanup
+2. ✅ **FIX BUG-005** — Preserve null score in loadUserProgress
+3. ⬜ **E2E Verification** — YouTube A → Lesson A, YouTube B → Lesson B, no cross-contamination
+4. ⬜ **Phase ⑤ Recording** — MediaRecorder WebM → `Storage::disk('media')` → object metadata persistence
+5. ⬜ **Phase ⑥ AI Pronunciation** — STT + phonetic alignment evaluation
