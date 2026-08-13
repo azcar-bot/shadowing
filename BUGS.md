@@ -4,8 +4,15 @@
 
 ### BUG-004: Wrong Transcript Source — Hardcoded Legacy Lesson Code [P0 CRITICAL]
 - **Reported:** 2026-08-13
-- **Status:** OPEN — IN_PROGRESS (NEEDS_FIX after 2 review rounds)
-- **Root Cause:** `ShadowingPractice.php` has hardcoded `$lessonCode = 'shadowing_youtube_tekkon'` which loads a legacy prototype lesson by default. The fallback chain (`?? ShadowingLesson::first()`) can load ANY lesson including invalid ones.
+- **Status:** READY_FOR_RE_REVIEW (Round 3) — Commit `d18649f`
+- **Root Cause:** `ShadowingPractice.php` had hardcoded `$lessonCode = 'shadowing_youtube_tekkon'` which loaded a legacy prototype lesson by default. The fallback chain (`?? ShadowingLesson::first()`) could load ANY lesson including invalid ones.
+- **Fix Applied:**
+  1. ✅ Removed hardcoded `$lessonCode = 'shadowing_youtube_tekkon'` → empty string `''`
+  2. ✅ Removed fallback chain entirely → `lesson()` returns null for safe empty state
+  3. ✅ `lesson()` only looks up by exact code + `status = published`
+  4. ✅ `availableLessons()` filters: `source_id NOT NULL` OR `is_official = true`
+  5. ✅ Blade uses nullsafe `?->` operator + empty state UI
+  6. ✅ Integrity check + access control preserved
 - **Impact:** When user creates a new YouTube lesson, the old prototype transcript may still display. Cross-contamination between Video A and Video B.
 - **Required Fix:**
   1. Remove hardcoded `$lessonCode = 'shadowing_youtube_tekkon'`.
@@ -18,9 +25,11 @@
 
 ### BUG-005: Null Score Cast in loadUserProgress [P0]
 - **Reported:** 2026-08-13
-- **Status:** OPEN
-- **Root Cause:** `'score' => (float) $prog->best_score` in `loadUserProgress()` converts database `NULL` to `0.0`, losing the distinction between "unscored" and "scored 0".
-- **Required Fix:** Use `$prog->best_score !== null ? (float) $prog->best_score : null` instead of `(float) $prog->best_score`.
+- **Status:** READY_FOR_RE_REVIEW — Commit `d18649f`
+- **Root Cause:** `'score' => (float) $prog->best_score` in `loadUserProgress()` converted database `NULL` to `0.0`, losing the distinction between "unscored" and "scored 0".
+- **Fix Applied:**
+  1. ✅ Changed to `$prog->best_score !== null ? (float) $prog->best_score : null`
+  2. ✅ Removed `'best_score' => 'float'` from `UserShadowingProgress` model casts
 
 ---
 
