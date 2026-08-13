@@ -21,39 +21,58 @@ class ShadowingRegressionVerificationTest extends TestCase
     #[Test]
     public function fake_source_reuse_is_rejected_in_deduplication_lookup(): void
     {
-        $fakeVideoId = 'fake_vid_dedup_test_' . time();
-        $fakeSource = ShadowingSource::create([
+        $fakeVideoId = 'fkVid123456';
+
+        // 1. Create a stale fake source in DB with ai_generated_fallback
+        $staleFakeSource = ShadowingSource::create([
             'youtube_video_id' => $fakeVideoId,
-            'title' => 'Fake Stale Source',
+            'title' => 'Stale Fake Source',
             'status' => 'completed',
             'transcript_source' => 'ai_generated_fallback',
             'processing_version' => config('shadowing.processing_version', 'natural-chunk-v1'),
         ]);
 
         ShadowingSourceChunk::create([
-            'shadowing_source_id' => $fakeSource->id,
+            'shadowing_source_id' => $staleFakeSource->id,
             'chunk_index' => 1,
             'start_ms' => 0,
             'end_ms' => 3000,
-            'transcript' => 'Fake text',
+            'transcript' => 'Stale fake transcript text',
         ]);
 
-        $forbiddenSources = ['ai_generated_fallback', 'mock', 'demo', 'sample', 'fake', 'prototype'];
+        // 2. Mock CaptionNormalizationService to return valid caption data without external HTTP calls
+        $mockCaptionService = $this->createMock(\App\Modules\Shadowing\Domain\Services\CaptionNormalizationService::class);
+        $mockCaptionService->expects($this->once())
+            ->method('fetchCaptionsWithFallback')
+            ->with($fakeVideoId)
+            ->willReturn([
+                'source' => 'youtube_official_caption',
+                'title' => 'Fresh Valid Video Title',
+                'duration_seconds' => 60,
+                'items' => [
+                    ['text' => 'Fresh valid transcript text for video.', 'start_ms' => 0, 'end_ms' => 3000]
+                ]
+            ]);
 
-        $existing = ShadowingSource::where('youtube_video_id', $fakeVideoId)
-            ->where('processing_version', config('shadowing.processing_version', 'natural-chunk-v1'))
-            ->where('status', 'completed')
-            ->whereNotNull('transcript_source')
-            ->whereNotIn('transcript_source', $forbiddenSources)
-            ->first();
+        $this->app->instance(\App\Modules\Shadowing\Domain\Services\CaptionNormalizationService::class, $mockCaptionService);
 
-        $this->assertNull($existing, 'Deduplication query must NOT return stale fake source with ai_generated_fallback');
+        // 3. Call actual production service ShadowingSourceProcessingService::processVideoSource()
+        /** @var ShadowingSourceProcessingService $processingService */
+        $processingService = app(ShadowingSourceProcessingService::class);
+        $resultSource = $processingService->processVideoSource($fakeVideoId);
+
+        // 4. Assertions:
+        $this->assertNotNull($resultSource);
+        $this->assertNotEquals($staleFakeSource->id, $resultSource->id, 'Production processVideoSource() must NOT reuse stale fake source!');
+        $this->assertEquals('youtube_official_caption', $resultSource->transcript_source, 'Returned source must have valid transcript_source');
+        $this->assertNotEquals('ai_generated_fallback', $resultSource->transcript_source, 'Returned source must NOT use ai_generated_fallback');
+        $this->assertEquals('completed', $resultSource->status);
     }
 
     #[Test]
     public function factory_rejects_forbidden_transcript_sources(): void
     {
-        $fakeVideoId = 'fake_vid_factory_test_' . time();
+        $fakeVideoId = 'fkVid654321';
         $fakeSource = ShadowingSource::create([
             'youtube_video_id' => $fakeVideoId,
             'title' => 'Fake Stale Source for Factory',

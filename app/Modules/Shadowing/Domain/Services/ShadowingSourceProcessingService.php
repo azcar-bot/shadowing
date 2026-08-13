@@ -112,6 +112,11 @@ class ShadowingSourceProcessingService
 
             // 6. PERSIST SHARED PROCESSED SOURCE & CHUNKS
             return DB::transaction(function () use ($videoId, $videoTitle, $durationSeconds, $transcriptSource, $version, $chunks, $captionResult) {
+                // Delete any existing stale/invalid source for this video and version to satisfy UNIQUE constraint
+                ShadowingSource::where('youtube_video_id', $videoId)
+                    ->where('processing_version', $version)
+                    ->delete();
+
                 $source = ShadowingSource::create([
                     'youtube_video_id' => $videoId,
                     'title' => $videoTitle,
