@@ -21,6 +21,12 @@ class ShadowingSource extends Model
         'transcript_source',
         'processing_version',
         'status',
+        'translation_status',
+        'translation_provider',
+        'translation_model',
+        'translation_version',
+        'translated_at',
+        'translation_error',
         'raw_payload',
         'error_message',
     ];
@@ -28,6 +34,7 @@ class ShadowingSource extends Model
     protected $casts = [
         'raw_payload' => 'array',
         'duration_seconds' => 'integer',
+        'translated_at' => 'datetime',
     ];
 
     protected static function booted(): void

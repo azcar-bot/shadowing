@@ -2,31 +2,26 @@
 
 ## Active Queue
 
-### [READY_TO_MERGE_REVIEW] BUG-004: Wrong Transcript Source
-- **Priority:** P0 CRITICAL
-- **Status:** ACCEPTED (Round 4) — READY_TO_MERGE_REVIEW (PR `fix/bug-004-005-round3` -> `main`)
-- **PHPUnit Tests:** `ShadowingRegressionVerificationTest.php` (3 permanent feature tests passed). Total suite: 13/13 passed.
-- **E2E Evidence:** 8/8 Integration tests + Real Playwright Browser E2E passed. See `E2E_EVIDENCE_ROUND4.md`.
+### [READY_FOR_TRANSLATION_FINAL_REVIEW] Translation EN→VI V3 Final
+- **Priority:** P1
+- **Status:** READY_FOR_TRANSLATION_FINAL_REVIEW — PR #2 (`feat/shadowing-translation-en-vi` -> `main`)
+- **Scope:** Complete EN->VI translation pipeline with dynamic config control (`shadowing.translation.enabled`/`provider`), exception classification (transient retryable vs permanent non-retryable), network transport error handling (`TranslationProviderTransientException`), queued job (`ProcessShadowingTranslationJob`) with `$timeout = 300s`, `$tries = 3`, backoff `[30, 120, 300]`, Lock TTL `420s`, bounded batching (25 chunks), 23 permanent PHPUnit translation tests (36/36 total pass), runtime verification with real Vietnamese translations, and zero student session AI calls.
+- **Evidence:** See `TRANSLATION_EVIDENCE_V3.md` and `DECISIONS.md` (ADR-006).
 
-### [ACCEPTED] BUG-005: Null Score Cast in loadUserProgress
-- **Priority:** P0
-- **Status:** ACCEPTED (Round 3)
-- **Scope:** Fixed `(float) $prog->best_score` → null preserved. Model casts updated. Verified in Test 5.
+### [RESOLVED] BUG-004: Wrong Transcript Source
+- **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
 
-### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)
-- **Scope:** Add a one-time Translation Provider that runs AI translation (EN→VI) when a lesson is created. Store `translation_vi` per chunk/segment in DB. Do NOT re-translate on every student session.
-- **Dependencies:** ACCEPT gate completed (BUG-004 + BUG-005 fixed, E2E verified, Architect ACCEPT).
-- **Rationale:** If transcript is wrong, AI will translate the wrong content accurately — wasting resources and creating confusing Vietnamese text.
+### [RESOLVED] BUG-005: Null Score Cast in loadUserProgress
+- **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
 
 ### [BLOCKED] Phase ⑤: Student Recording — Cloudflare R2 / MinIO Persistence
 - **Scope:** Upload client-side WebM recording Blobs via `Storage::disk('media')` to private object storage, persist object metadata in DB (NOT presigned URLs), and enable persistent dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
 - **Storage:** See ADR-004 and ADR-005 in DECISIONS.md.
-- **Dependencies:** Translation phase should be complete or at least functional.
-- **⚠️ CORRECTION:** Previous references to "S3/MinIO" and "presigned URL persistence" are INVALID. See ADR-004 for canonical storage architecture.
+- **Dependencies:** BLOCKED until Translation PR #2 is ACCEPTED/MERGED.
 
 ### [BLOCKED] Phase ⑥: AI Pronunciation Evaluation
 - **Scope:** Deepgram / DeepSeek STT & phonetic alignment evaluation.
-- **Dependencies:** Phase ⑤ must be complete.
+- **Dependencies:** BLOCKED until Phase ⑤ Recording is complete.
 
 ---
 

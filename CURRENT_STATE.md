@@ -45,15 +45,16 @@ logical disk: media
 
 ---
 
-## 2. Current Blockers & Review Status
+## 2. Current Active Phase & Review Status
 
-| Bug | Priority | Status | Reviewer | PR Branch |
+| Feature / Bug | Priority | Status | Reviewer | PR Branch |
 |---|---|---|---|---|
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `ACCEPTED (READY_TO_MERGE_REVIEW)` | Architect | `fix/bug-004-005-round3` |
-| **BUG-005** Null Score Cast | P0 | `ACCEPTED` | Architect | `fix/bug-004-005-round3` |
+| **Translation EN→VI V3 Final** | P1 | `READY_FOR_TRANSLATION_FINAL_REVIEW` | Architect | `feat/shadowing-translation-en-vi` (PR #2) |
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` (Merged PR #1) | Architect | `main` |
+| **BUG-005** Null Score Cast | P0 | `RESOLVED` (Merged PR #1) | Architect | `main` |
 
-**PHPUnit Suite:** 13/13 Passed (46 assertions, 0.95s).
-**E2E Evidence:** 8/8 Integration Tests + Real Playwright Browser E2E Passed. See `E2E_EVIDENCE_ROUND4.md`.
+**PHPUnit Suite:** 36/36 Passed (114 assertions, 3.28s).
+**Evidence Document:** See `TRANSLATION_EVIDENCE_V3.md`.
 
 ---
 
@@ -74,10 +75,7 @@ logical disk: media
 
 ## 4. Pending Work (Ordered)
 
-1. ⬜ **FIX BUG-004** — Remove hardcoded lesson code, safe fallback, legacy cleanup
-2. ⬜ **FIX BUG-005** — Preserve null score in loadUserProgress
-3. ⬜ **E2E Verification** — YouTube A → Lesson A, YouTube B → Lesson B, no cross-contamination
-4. ⬜ **ACCEPT gate** — Architect reviews and accepts BUG-004 + BUG-005 fixes
-5. ⬜ **Translation EN→VI** — One-time AI translation per lesson at creation time, store `translation_vi` in DB
-6. ⬜ **Phase ⑤ Recording** — MediaRecorder WebM → `Storage::disk('media')` → object metadata persistence
-7. ⬜ **Phase ⑥ AI Pronunciation** — STT + phonetic alignment evaluation
+1. ⏳ **Translation EN→VI V3 Final** — `READY_FOR_TRANSLATION_FINAL_REVIEW` (PR #2, 36/36 tests passed, 114 assertions, `TRANSLATION_EVIDENCE_V3.md`)
+2. 🔒 **Merge PR #2** — BLOCKED pending Architect final merge approval
+3. 🔒 **Phase ⑤ Recording** — BLOCKED until Translation merge
+4. 🔒 **Phase ⑥ AI Pronunciation** — BLOCKED until Recording

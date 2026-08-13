@@ -50,3 +50,17 @@
   ```
   DB object_key → Storage::disk('media') → temporaryUrl() → browser playback
   ```
+
+## ADR-006: Translation EN→VI Architecture — Async Queued Translation with Strict Idempotency
+- **Date:** 2026-08-13
+- **Status:** APPROVED — LOCKED
+- **Context:** English transcript is canonical and immutable. Translation to Vietnamese must be context-aware, fast, cost-effective, and never block student sessions or lesson creation.
+- **Decision:**
+  1. **Translate Once, Persist DB:** Translation is executed ONCE at lesson creation (via queued `ProcessShadowingTranslationJob`) or via admin action. Persisted on `shadowing_source_chunks.translation_vi` and synced to `shadowing_segments.translation_vi`.
+  2. **Zero Student Session AI Calls:** Opening practice screens or taking lessons reads pre-persisted translations directly from the database with 0 provider calls.
+  3. **Strict Idempotency:** Skipping provider calls requires: `translation_status === 'completed'` AND `translation_version === configured version` AND every chunk has a non-empty `translation_vi`.
+  4. **No Fake Translation Fallbacks:** When provider API key is unconfigured, system throws `TranslationProviderUnavailableException`. The system MUST NOT generate fake/local translations or prefix English text.
+  5. **Queued Job & Fast Lesson Creation:** `ShadowingLessonFactoryService` creates validated English lessons immediately and dispatches `ProcessShadowingTranslationJob` asynchronously. The job configures `$tries = 3` and exponential backoff `[30, 120, 300]`.
+  6. **Context-Aware Translation:** Provider requests supply `prev_transcript`, `current`, and `next_transcript` for natural conversational Vietnamese.
+  7. **Batching:** Bounded batch processing (default `batch_size = 25`) prevents payload timeouts on 100+ chunk transcripts.
+

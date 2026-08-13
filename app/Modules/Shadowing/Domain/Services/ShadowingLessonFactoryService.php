@@ -6,6 +6,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Models\User;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingLesson;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSegment;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSource;
+use App\Modules\Shadowing\Domain\Jobs\ProcessShadowingTranslationJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -30,7 +31,7 @@ class ShadowingLessonFactoryService
             return $existing;
         }
 
-        return DB::transaction(function () use ($source, $code, $title, $level, $topic) {
+        $lesson = DB::transaction(function () use ($source, $code, $title, $level, $topic) {
             $hasReviewChunks = $source->chunks()->where('needs_review', true)->exists();
             $status = $hasReviewChunks ? 'review_required' : 'published';
 
@@ -69,6 +70,13 @@ class ShadowingLessonFactoryService
 
             return $lesson;
         });
+
+        // Dispatch queued translation job asynchronously if enabled
+        if (config('shadowing.translation.enabled', true)) {
+            ProcessShadowingTranslationJob::dispatch($source->id);
+        }
+
+        return $lesson;
     }
 
     /**
@@ -93,7 +101,7 @@ class ShadowingLessonFactoryService
         $title = $options['title'] ?? $source->title;
         $level = $options['level'] ?? 'B2';
 
-        return DB::transaction(function () use ($user, $source, $code, $title, $level) {
+        $lesson = DB::transaction(function () use ($user, $source, $code, $title, $level) {
             $lesson = ShadowingLesson::create([
                 'source_id' => $source->id,
                 'user_id' => $user->id,
@@ -129,6 +137,13 @@ class ShadowingLessonFactoryService
 
             return $lesson;
         });
+
+        // Dispatch queued translation job asynchronously if enabled
+        if (config('shadowing.translation.enabled', true)) {
+            ProcessShadowingTranslationJob::dispatch($source->id);
+        }
+
+        return $lesson;
     }
 
     /**
