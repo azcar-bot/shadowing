@@ -45,14 +45,14 @@ logical disk: media
 
 ---
 
-## 2. Current Blockers
+## 2. Current Blockers & Review Status
 
-| Bug | Priority | Status | Reviewer |
-|---|---|---|---|
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | NEEDS_FIX (Round 2) | Architect |
-| **BUG-005** Null Score Cast | P0 | OPEN | — |
+| Bug | Priority | Status | Reviewer | PR Branch |
+|---|---|---|---|---|
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `READY_FOR_RE_REVIEW_ROUND_3` | Architect | `fix/bug-004-005-round3` |
+| **BUG-005** Null Score Cast | P0 | `READY_FOR_RE_REVIEW_ROUND_3` | Architect | `fix/bug-004-005-round3` |
 
-**⚠️ Phase ⑤ (Recording) and Phase ⑥ (AI Eval) are BLOCKED until BUG-004 receives `ACCEPT` from Architect.**
+**E2E Evidence:** 5/5 Automated E2E Tests Passed. See `E2E_EVIDENCE_ROUND3.md`.
 
 ---
 

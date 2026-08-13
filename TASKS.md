@@ -2,16 +2,16 @@
 
 ## Active Queue
 
-### [BLOCKER] BUG-004: Wrong Transcript Source — Fix Required Before Any New Phase
+### [READY_FOR_RE_REVIEW_ROUND_3] BUG-004: Wrong Transcript Source
 - **Priority:** P0 CRITICAL
-- **Status:** NEEDS_FIX (Review Round 2)
-- **Scope:** See BUGS.md BUG-004 for full details. All 6 sub-items must be fixed.
-- **Reviewer Verdict:** Do NOT proceed to Phase ⑤ until BUG-004 receives `ACCEPT`.
+- **Status:** READY_FOR_RE_REVIEW_ROUND_3 — PR `fix/bug-004-005-round3`
+- **Source Sync:** 24 canonical files pushed to PR branch `fix/bug-004-005-round3`
+- **E2E Evidence:** Verified via 5 automated tests. See `E2E_EVIDENCE_ROUND3.md`.
 
-### [BLOCKER] BUG-005: Null Score Cast in loadUserProgress
+### [READY_FOR_RE_REVIEW_ROUND_3] BUG-005: Null Score Cast in loadUserProgress
 - **Priority:** P0
-- **Status:** OPEN
-- **Scope:** Fix `(float) $prog->best_score` → preserve null. See BUGS.md.
+- **Status:** READY_FOR_RE_REVIEW_ROUND_3 — PR `fix/bug-004-005-round3`
+- **Scope:** Fixed `(float) $prog->best_score` → null preserved. Model casts updated. Verified in Test 5.
 
 ### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)
 - **Scope:** Add a one-time Translation Provider that runs AI translation (EN→VI) when a lesson is created. Store `translation_vi` per chunk/segment in DB. Do NOT re-translate on every student session.
