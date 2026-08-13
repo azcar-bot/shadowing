@@ -73,8 +73,10 @@ logical disk: media
 
 ## 4. Pending Work (Ordered)
 
-1. ✅ **FIX BUG-004** — Remove hardcoded lesson code, safe fallback, legacy cleanup
-2. ✅ **FIX BUG-005** — Preserve null score in loadUserProgress
+1. ⬜ **FIX BUG-004** — Remove hardcoded lesson code, safe fallback, legacy cleanup
+2. ⬜ **FIX BUG-005** — Preserve null score in loadUserProgress
 3. ⬜ **E2E Verification** — YouTube A → Lesson A, YouTube B → Lesson B, no cross-contamination
-4. ⬜ **Phase ⑤ Recording** — MediaRecorder WebM → `Storage::disk('media')` → object metadata persistence
-5. ⬜ **Phase ⑥ AI Pronunciation** — STT + phonetic alignment evaluation
+4. ⬜ **ACCEPT gate** — Architect reviews and accepts BUG-004 + BUG-005 fixes
+5. ⬜ **Translation EN→VI** — One-time AI translation per lesson at creation time, store `translation_vi` in DB
+6. ⬜ **Phase ⑤ Recording** — MediaRecorder WebM → `Storage::disk('media')` → object metadata persistence
+7. ⬜ **Phase ⑥ AI Pronunciation** — STT + phonetic alignment evaluation
