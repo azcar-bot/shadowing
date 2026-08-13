@@ -26,10 +26,14 @@ class ShadowingSourceProcessingService
         $videoId = $this->urlNormalizer->extractVideoId($youtubeInput);
         $version = $processingVersion ?? config('shadowing.processing_version', 'natural-chunk-v1');
 
-        // 1. DEDUPLICATION LOOKUP: Check if already processed
+        $forbiddenSources = ['ai_generated_fallback', 'mock', 'demo', 'sample', 'fake', 'prototype'];
+
+        // 1. DEDUPLICATION LOOKUP: Check if already processed with valid transcript source
         $existing = ShadowingSource::where('youtube_video_id', $videoId)
             ->where('processing_version', $version)
             ->where('status', 'completed')
+            ->whereNotNull('transcript_source')
+            ->whereNotIn('transcript_source', $forbiddenSources)
             ->first();
 
         if ($existing) {
@@ -47,6 +51,8 @@ class ShadowingSourceProcessingService
                 $existing = ShadowingSource::where('youtube_video_id', $videoId)
                     ->where('processing_version', $version)
                     ->where('status', 'completed')
+                    ->whereNotNull('transcript_source')
+                    ->whereNotIn('transcript_source', $forbiddenSources)
                     ->first();
                 if ($existing) {
                     return $existing;
@@ -60,6 +66,8 @@ class ShadowingSourceProcessingService
             $existing = ShadowingSource::where('youtube_video_id', $videoId)
                 ->where('processing_version', $version)
                 ->where('status', 'completed')
+                ->whereNotNull('transcript_source')
+                ->whereNotIn('transcript_source', $forbiddenSources)
                 ->first();
 
             if ($existing) {

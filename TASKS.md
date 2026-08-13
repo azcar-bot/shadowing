@@ -2,15 +2,15 @@
 
 ## Active Queue
 
-### [READY_FOR_RE_REVIEW_ROUND_3] BUG-004: Wrong Transcript Source
+### [READY_FOR_RE_REVIEW_ROUND_4] BUG-004: Wrong Transcript Source
 - **Priority:** P0 CRITICAL
-- **Status:** READY_FOR_RE_REVIEW_ROUND_3 — PR `fix/bug-004-005-round3`
-- **Source Sync:** 24 canonical files pushed to PR branch `fix/bug-004-005-round3`
-- **E2E Evidence:** Verified via 5 automated tests. See `E2E_EVIDENCE_ROUND3.md`.
+- **Status:** READY_FOR_RE_REVIEW_ROUND_4 — PR `fix/bug-004-005-round3`
+- **Enhancements:** validateSource() gate, dedupe query exclusion, legacy cleanup migration `2026_08_13_170000`, strict availableLessons semantics.
+- **E2E Evidence:** 8/8 Integration tests + Real Playwright Browser E2E passed. See `E2E_EVIDENCE_ROUND4.md`.
 
-### [READY_FOR_RE_REVIEW_ROUND_3] BUG-005: Null Score Cast in loadUserProgress
+### [ACCEPTED] BUG-005: Null Score Cast in loadUserProgress
 - **Priority:** P0
-- **Status:** READY_FOR_RE_REVIEW_ROUND_3 — PR `fix/bug-004-005-round3`
+- **Status:** ACCEPTED (Round 3)
 - **Scope:** Fixed `(float) $prog->best_score` → null preserved. Model casts updated. Verified in Test 5.
 
 ### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)

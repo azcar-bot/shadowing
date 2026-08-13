@@ -141,6 +141,11 @@ class ShadowingLessonFactoryService
             throw new \InvalidArgumentException('ShadowingSource contains invalid or empty YouTube video ID.');
         }
 
+        $forbiddenSources = ['ai_generated_fallback', 'mock', 'demo', 'sample', 'fake', 'prototype'];
+        if (empty($source->transcript_source) || in_array(strtolower($source->transcript_source), $forbiddenSources, true)) {
+            throw new \InvalidArgumentException("ShadowingSource ID {$source->id} uses forbidden or invalid transcript source ('{$source->transcript_source}'). Cannot create lesson from fake source.");
+        }
+
         if ($source->status !== 'completed') {
             throw new \RuntimeException("ShadowingSource ID {$source->id} is not completed (status: {$source->status}).");
         }

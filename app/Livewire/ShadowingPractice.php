@@ -7,6 +7,7 @@ use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingLesson;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingSegment;
 use App\Modules\Shadowing\Infrastructure\Persistence\Models\UserShadowingProgress;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -56,13 +57,27 @@ class ShadowingPractice extends Component
     public function availableLessons()
     {
         $userId = Auth::id();
+        $forbidden = ['ai_generated_fallback', 'mock', 'demo', 'sample', 'fake', 'prototype'];
 
-        return ShadowingLesson::select('id', 'code', 'title', 'level', 'media_type', 'total_segments', 'visibility', 'user_id')
+        return ShadowingLesson::select('id', 'code', 'title', 'level', 'media_type', 'total_segments', 'visibility', 'user_id', 'source_id', 'youtube_video_id', 'is_official')
             ->where('status', 'published')
-            ->where(function ($q) {
-                // Only lessons with valid source OR explicitly official manual lessons
-                $q->whereNotNull('source_id')
-                  ->orWhere('is_official', true);
+            ->where(function ($q) use ($forbidden) {
+                // 1. YouTube lessons MUST have valid completed source with clean transcript_source
+                $q->where(function ($yt) use ($forbidden) {
+                    $yt->where('media_type', 'youtube')
+                       ->whereNotNull('source_id')
+                       ->whereHas('source', function ($srcQuery) use ($forbidden) {
+                           $srcQuery->where('status', 'completed')
+                                    ->whereNotNull('transcript_source')
+                                    ->whereNotIn(DB::raw('LOWER(transcript_source)'), $forbidden);
+                       });
+                })
+                // 2. Non-YouTube / Manual lessons MUST be explicitly official with segments
+                ->orWhere(function ($manual) {
+                    $manual->where('media_type', '!=', 'youtube')
+                           ->where('is_official', true)
+                           ->where('total_segments', '>', 0);
+                });
             })
             ->where(function ($q) use ($userId) {
                 $q->where('visibility', 'official');

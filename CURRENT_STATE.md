@@ -49,10 +49,10 @@ logical disk: media
 
 | Bug | Priority | Status | Reviewer | PR Branch |
 |---|---|---|---|---|
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `READY_FOR_RE_REVIEW_ROUND_3` | Architect | `fix/bug-004-005-round3` |
-| **BUG-005** Null Score Cast | P0 | `READY_FOR_RE_REVIEW_ROUND_3` | Architect | `fix/bug-004-005-round3` |
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `READY_FOR_RE_REVIEW_ROUND_4` | Architect | `fix/bug-004-005-round3` |
+| **BUG-005** Null Score Cast | P0 | `ACCEPTED` | Architect | `fix/bug-004-005-round3` |
 
-**E2E Evidence:** 5/5 Automated E2E Tests Passed. See `E2E_EVIDENCE_ROUND3.md`.
+**E2E Evidence:** 8/8 Integration Tests + Real Playwright Browser E2E Passed. See `E2E_EVIDENCE_ROUND4.md`.
 
 ---
 
