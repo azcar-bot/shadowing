@@ -12,7 +12,7 @@ use Livewire\Component;
 
 class ShadowingPractice extends Component
 {
-    public string $lessonCode = 'shadowing_youtube_tekkon';
+    public string $lessonCode = '';
 
     public int $currentIndex = 1;
 
@@ -58,8 +58,14 @@ class ShadowingPractice extends Component
         $userId = Auth::id();
 
         return ShadowingLesson::select('id', 'code', 'title', 'level', 'media_type', 'total_segments', 'visibility', 'user_id')
+            ->where('status', 'published')
+            ->where(function ($q) {
+                // Only lessons with valid source OR explicitly official manual lessons
+                $q->whereNotNull('source_id')
+                  ->orWhere('is_official', true);
+            })
             ->where(function ($q) use ($userId) {
-                $q->where('visibility', 'official')->where('status', 'published');
+                $q->where('visibility', 'official');
                 if ($userId) {
                     $q->orWhere(function ($sub) use ($userId) {
                         $sub->where('visibility', 'private')->where('user_id', $userId);
@@ -73,11 +79,31 @@ class ShadowingPractice extends Component
     #[Computed]
     public function lesson()
     {
-        $lesson = ShadowingLesson::where('code', $this->lessonCode)->first()
-            ?? ShadowingLesson::where('status', 'published')->first()
-            ?? ShadowingLesson::first();
+        if (empty($this->lessonCode)) {
+            return null;
+        }
 
-        if ($lesson && $lesson->visibility === 'private') {
+        $lesson = ShadowingLesson::where('code', $this->lessonCode)
+            ->where('status', 'published')
+            ->first();
+
+        if (!$lesson) {
+            return null;
+        }
+
+        // TRANSCRIPT SOURCE INTEGRITY CHECK
+        if ($lesson->source_id && $lesson->source) {
+            if ($lesson->youtube_video_id && $lesson->source->youtube_video_id !== $lesson->youtube_video_id) {
+                \Illuminate\Support\Facades\Log::critical('BUG-004 TRANSCRIPT MISMATCH DETECTED', [
+                    'lesson_id' => $lesson->id,
+                    'lesson_video' => $lesson->youtube_video_id,
+                    'source_video' => $lesson->source->youtube_video_id,
+                ]);
+                throw new \RuntimeException("Phát hiện lỗi không đồng bộ dữ liệu: Video lesson ({$lesson->youtube_video_id}) không khớp với nguồn transcript ({$lesson->source->youtube_video_id}).");
+            }
+        }
+
+        if ($lesson->visibility === 'private') {
             $user = Auth::user();
             if (!$user || ($lesson->user_id !== $user->id && !$user->isAdmin())) {
                 abort(403, 'Bạn không có quyền truy cập bài Shadowing cá nhân này.');
@@ -166,15 +192,15 @@ class ShadowingPractice extends Component
         $this->revealedInChallenge = true;
     }
 
-    public function recordAttempt(float $score = 100.0, ?string $audioUrl = null, int $durationMs = 0): void
+    public function recordAttempt(?float $score = null, ?string $audioUrl = null, int $durationMs = 0): void
     {
         $segment = $this->currentStudentSegment;
         if (!$segment) {
             return;
         }
 
-        if (!$this->isPreviewMode) {
-            $userId = Auth::id() ?? 1;
+        $userId = Auth::id();
+        if ($userId && !$this->isPreviewMode) {
             /** @var ShadowingAttemptService $service */
             $service = app(ShadowingAttemptService::class);
             $service->recordAttempt(
@@ -193,7 +219,7 @@ class ShadowingPractice extends Component
 
             if ($progress) {
                 $newStatus = $this->computeMasteryStatus(
-                    (float) $progress->best_score,
+                    $progress->best_score !== null ? (float) $progress->best_score : null,
                     (int) $progress->practice_count
                 );
                 if ($progress->mastery_status !== $newStatus) {
@@ -203,11 +229,12 @@ class ShadowingPractice extends Component
         }
 
         $practiceCount = ($this->userAttempts[$this->currentIndex]['practice_count'] ?? 0) + 1;
-        $bestScore = max($score, $this->userAttempts[$this->currentIndex]['score'] ?? 0);
+        $prevScore = $this->userAttempts[$this->currentIndex]['score'] ?? null;
+        $bestScore = $score !== null ? ($prevScore !== null ? max($score, $prevScore) : $score) : $prevScore;
 
         $this->userAttempts[$this->currentIndex] = [
             'score'          => $bestScore,
-            'is_completed'   => $bestScore >= 75.0,
+            'is_completed'   => $bestScore !== null && $bestScore >= 75.0,
             'audio_url'      => $audioUrl,
             'practice_count' => $practiceCount,
             'mastery_status' => $this->computeMasteryStatus($bestScore, $practiceCount),
@@ -243,9 +270,9 @@ class ShadowingPractice extends Component
         );
     }
 
-    private function computeMasteryStatus(float $bestScore, int $practiceCount): string
+    private function computeMasteryStatus(?float $bestScore, int $practiceCount): string
     {
-        if ($bestScore >= 75.0) {
+        if ($bestScore !== null && $bestScore >= 75.0) {
             return 'mastered';
         }
         if ($practiceCount >= 3) {
@@ -259,11 +286,11 @@ class ShadowingPractice extends Component
 
     private function loadUserProgress(): void
     {
-        if ($this->isPreviewMode || !$this->lesson) {
+        $userId = Auth::id();
+        if (!$userId || $this->isPreviewMode || !$this->lesson) {
             return;
         }
 
-        $userId = Auth::id() ?? 1;
         $segmentIds = ShadowingSegment::where('shadowing_lesson_id', $this->lesson->id)->pluck('id')->toArray();
 
         $progresses = UserShadowingProgress::where('user_id', $userId)
@@ -274,7 +301,7 @@ class ShadowingPractice extends Component
             $seg = ShadowingSegment::find($prog->shadowing_segment_id);
             if ($seg) {
                 $this->userAttempts[$seg->segment_index] = [
-                    'score'          => (float) $prog->best_score,
+                    'score'          => $prog->best_score !== null ? (float) $prog->best_score : null,
                     'is_completed'   => (bool) $prog->is_completed,
                     'practice_count' => (int) $prog->practice_count,
                     'mastery_status' => $prog->mastery_status ?? 'unseen',

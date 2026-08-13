@@ -24,7 +24,6 @@ class UserShadowingProgress extends Model
     ];
 
     protected $casts = [
-        'best_score' => 'float',
         'practice_count' => 'integer',
         'is_completed' => 'boolean',
         'last_practiced_at' => 'datetime',

@@ -16,6 +16,9 @@ class ShadowingLessonFactoryService
      */
     public function createOfficialLesson(ShadowingSource $source, array $options = []): ShadowingLesson
     {
+        // TRANSCRIPT SOURCE VALIDATION GATE
+        $this->validateSource($source);
+
         $code = $options['code'] ?? 'shadowing_official_' . strtolower($source->youtube_video_id) . '_' . Str::random(4);
         $title = $options['title'] ?? $source->title;
         $level = $options['level'] ?? 'B2';
@@ -73,6 +76,9 @@ class ShadowingLessonFactoryService
      */
     public function createPrivateLessonForUser(mixed $user, ShadowingSource $source, array $options = []): ShadowingLesson
     {
+        // TRANSCRIPT SOURCE VALIDATION GATE
+        $this->validateSource($source);
+
         // If user already created a private lesson for this exact video source, reuse it!
         $existing = ShadowingLesson::where('user_id', $user->id)
             ->where('source_id', $source->id)
@@ -123,5 +129,25 @@ class ShadowingLessonFactoryService
 
             return $lesson;
         });
+    }
+
+    /**
+     * TRANSCRIPT SOURCE VALIDATION GATE
+     * Enforces strict integrity between video ID, source ID, and transcript chunks.
+     */
+    private function validateSource(ShadowingSource $source): void
+    {
+        if (empty($source->id) || empty($source->youtube_video_id)) {
+            throw new \InvalidArgumentException('ShadowingSource contains invalid or empty YouTube video ID.');
+        }
+
+        if ($source->status !== 'completed') {
+            throw new \RuntimeException("ShadowingSource ID {$source->id} is not completed (status: {$source->status}).");
+        }
+
+        $chunkCount = $source->chunks()->count();
+        if ($chunkCount === 0) {
+            throw new \RuntimeException("ShadowingSource ID {$source->id} for video {$source->youtube_video_id} has 0 chunks. Cannot create lesson from empty transcript.");
+        }
     }
 }
