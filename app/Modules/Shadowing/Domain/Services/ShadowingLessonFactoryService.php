@@ -30,6 +30,13 @@ class ShadowingLessonFactoryService
             return $existing;
         }
 
+        // Auto-translate source if not yet completed (ONCE per source)
+        try {
+            app(ShadowingTranslationService::class)->translateSource($source);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Auto-translation skipped or failed for source ID {$source->id}: {$e->getMessage()}");
+        }
+
         return DB::transaction(function () use ($source, $code, $title, $level, $topic) {
             $hasReviewChunks = $source->chunks()->where('needs_review', true)->exists();
             $status = $hasReviewChunks ? 'review_required' : 'published';
@@ -92,6 +99,13 @@ class ShadowingLessonFactoryService
         $code = 'shadowing_user_' . $user->id . '_' . strtolower($source->youtube_video_id) . '_' . Str::random(4);
         $title = $options['title'] ?? $source->title;
         $level = $options['level'] ?? 'B2';
+
+        // Auto-translate source if not yet completed (ONCE per source)
+        try {
+            app(ShadowingTranslationService::class)->translateSource($source);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Auto-translation skipped or failed for source ID {$source->id}: {$e->getMessage()}");
+        }
 
         return DB::transaction(function () use ($user, $source, $code, $title, $level) {
             $lesson = ShadowingLesson::create([

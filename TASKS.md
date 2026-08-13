@@ -2,16 +2,17 @@
 
 ## Active Queue
 
-### [READY_TO_MERGE_REVIEW] BUG-004: Wrong Transcript Source
-- **Priority:** P0 CRITICAL
-- **Status:** ACCEPTED (Round 4) — READY_TO_MERGE_REVIEW (PR `fix/bug-004-005-round3` -> `main`)
-- **PHPUnit Tests:** `ShadowingRegressionVerificationTest.php` (3 permanent feature tests passed). Total suite: 13/13 passed.
-- **E2E Evidence:** 8/8 Integration tests + Real Playwright Browser E2E passed. See `E2E_EVIDENCE_ROUND4.md`.
+### [READY_FOR_TRANSLATION_REVIEW_V1] Translation EN→VI V1
+- **Priority:** P1
+- **Status:** READY_FOR_TRANSLATION_REVIEW_V1 — PR `feat/shadowing-translation-en-vi` -> `main`
+- **Scope:** Complete EN->VI translation pipeline with provider contract (`TranslationProviderContract`), DeepSeek adapter (`DeepSeekTranslationAdapter`), domain translation service (`ShadowingTranslationService`), context builder (prev/current/next), atomic DB persistence, idempotency gate (`vi-v1`), 10 permanent PHPUnit tests, runtime verification, and zero student session AI calls.
+- **Evidence:** See `TRANSLATION_EVIDENCE_V1.md`.
 
-### [ACCEPTED] BUG-005: Null Score Cast in loadUserProgress
-- **Priority:** P0
-- **Status:** ACCEPTED (Round 3)
-- **Scope:** Fixed `(float) $prog->best_score` → null preserved. Model casts updated. Verified in Test 5.
+### [RESOLVED] BUG-004: Wrong Transcript Source
+- **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
+
+### [RESOLVED] BUG-005: Null Score Cast in loadUserProgress
+- **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
 
 ### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)
 - **Scope:** Add a one-time Translation Provider that runs AI translation (EN→VI) when a lesson is created. Store `translation_vi` per chunk/segment in DB. Do NOT re-translate on every student session.
