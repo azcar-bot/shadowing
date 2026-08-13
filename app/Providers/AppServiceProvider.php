@@ -90,6 +90,10 @@ class AppServiceProvider extends ServiceProvider
                 default => throw new \InvalidArgumentException("Unsupported translation provider configured: '{$provider}'"),
             };
         });
+        $this->app->bind(
+            \App\Modules\Shadowing\Domain\Contracts\ShadowingRecordingStorageContract::class,
+            \App\Modules\Shadowing\Infrastructure\Adapters\LaravelMediaRecordingStorageAdapter::class
+        );
         // Identity module contracts
         $this->app->bind(AuditLogger::class, EloquentAuditLogger::class);
         $this->app->bind(OtpChallenger::class, EmailOtpHandler::class);

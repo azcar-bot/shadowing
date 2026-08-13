@@ -223,28 +223,34 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button type="button"
                         @click="playUserAudio()"
-                        :disabled="!userAudioUrl"
+                        :disabled="!userAudioUrl || recordingState === 'uploading'"
                         class="h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95">
-                        <i class="bx bx-play-circle text-lg text-[#696cff]"></i>
-                        <span>🔊 PHÁT LẠI GHI ÂM</span>
+                        <i class="bx text-lg text-[#696cff]" :class="isPlayingUserAudio ? 'bx-pause-circle text-rose-600' : 'bx-play-circle'"></i>
+                        <span x-text="isPlayingUserAudio ? '⏸️ DỪNG GIỌNG TÔI' : '🎙️ GIỌNG TÔI (PHÁT LẠI)'"></span>
                     </button>
 
                     <button type="button"
                         @click="toggleRecording()"
-                        :class="isRecording ? 'bg-rose-600 hover:bg-rose-700 animate-pulse' : 'bg-[#696cff] hover:bg-[#5f61e6]'"
-                        class="h-11 rounded-xl text-white font-bold text-xs shadow-md shadow-[#696cff]/25 transition-all flex items-center justify-center gap-2 active:scale-95">
-                        <i class="bx" :class="isRecording ? 'bx-stop-circle' : 'bx-microphone'" class="text-lg"></i>
-                        <span x-text="isRecording ? 'ĐANG GHI ÂM (BẤM ĐỂ DỪNG)...' : '🎙️ GHI ÂM'"></span>
+                        :disabled="recordingState === 'uploading'"
+                        :class="recordingState === 'recording' ? 'bg-rose-600 hover:bg-rose-700 animate-pulse' : recordingState === 'uploading' ? 'bg-amber-600' : 'bg-[#696cff] hover:bg-[#5f61e6]'"
+                        class="h-11 rounded-xl text-white font-bold text-xs shadow-md shadow-[#696cff]/25 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">
+                        <i class="bx text-lg" :class="recordingState === 'recording' ? 'bx-stop-circle' : recordingState === 'uploading' ? 'bx-loader-alt animate-spin' : 'bx-microphone'"></i>
+                        <span x-text="recordingState === 'recording' ? 'ĐANG GHI ÂM (BẤM ĐỂ DỪNG)...' : recordingState === 'uploading' ? 'ĐANG TẢI LÊN...' : '🎙️ GHI ÂM GIỌNG TÔI'"></span>
                     </button>
                 </div>
+
+                <template x-if="recordingErrorMessage">
+                    <div class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs text-center font-semibold flex items-center justify-center gap-1.5">
+                        <i class="bx bx-error-circle text-base"></i>
+                        <span x-text="recordingErrorMessage"></span>
+                    </div>
+                </template>
+
                 <p class="text-[11px] text-center text-slate-400 font-medium">
-                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">SPACE</kbd> Phát/Dừng ·
-                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">R</kbd> Nghe lại ·
+                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">SPACE</kbd> Phát/Dừng Mẫu ·
+                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">R</kbd> Nghe lại Mẫu ·
                     <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">←</kbd><kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">→</kbd> Câu trước/sau ·
-                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">−</kbd><kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">+</kbd> Tốc độ ·
-                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">Z</kbd> Lùi 2s ·
-                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">M</kbd> Ghi âm ·
-                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">L</kbd> Lặp
+                    <kbd class="px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-600 font-bold">M</kbd> Ghi âm Giọng tôi
                 </p>
             </div>
         </div>
@@ -361,9 +367,13 @@
                 showTranslation: true,
                 playbackRate: 1.0,
                 isRecording: false,
+                recordingState: 'idle', // 'idle' | 'requesting_permission' | 'recording' | 'stopping' | 'uploading' | 'ready' | 'error'
+                recordingErrorMessage: '',
                 mediaRecorder: null,
                 audioChunks: [],
                 userAudioUrl: null,
+                isPlayingUserAudio: false,
+                userAudioElement: null,
                 timerCheck: null,
 
                 // Explicit Playback State Machine
@@ -386,6 +396,242 @@
                 initEngine() {
                     if (this.lessonType === 'youtube' && this.youtubeId) {
                         this.initYouTubePlayer();
+                    }
+                    this.updateRecordingForActiveSegment();
+                },
+
+                updateRecordingForActiveSegment() {
+                    this.stopUserAudio();
+                    const seg = this.currentSegment();
+                    if (!seg) {
+                        this.userAudioUrl = null;
+                        return;
+                    }
+
+                    const rec = this.$wire && this.$wire.userRecordings ? this.$wire.userRecordings[seg.id] : null;
+                    if (rec && rec.playback_url) {
+                        this.userAudioUrl = rec.playback_url;
+                        this.recordingState = 'ready';
+                    } else {
+                        this.userAudioUrl = null;
+                        this.recordingState = 'idle';
+                    }
+                    this.recordingErrorMessage = '';
+                },
+
+                getBestSupportedMimeType() {
+                    const types = [
+                        'audio/webm;codecs=opus',
+                        'audio/webm',
+                        'audio/mp4',
+                        'audio/m4a',
+                        'audio/ogg',
+                        'audio/wav'
+                    ];
+                    for (const t of types) {
+                        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) {
+                            return t;
+                        }
+                    }
+                    return '';
+                },
+
+                async toggleRecording() {
+                    if (this.recordingState === 'recording') {
+                        this.stopRecording();
+                    } else {
+                        await this.startRecording();
+                    }
+                },
+
+                async startRecording() {
+                    this.recordingErrorMessage = '';
+                    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+                        this.recordingState = 'error';
+                        this.recordingErrorMessage = 'Trình duyệt của bạn không hỗ trợ ghi âm trực tiếp. Vui lòng sử dụng Chrome, Edge hoặc Safari.';
+                        return;
+                    }
+
+                    // 1. Pause sample YouTube / audio playback before recording starts
+                    this.pausePlayback();
+                    this.stopUserAudio();
+
+                    try {
+                        this.recordingState = 'requesting_permission';
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                        const mimeType = this.getBestSupportedMimeType();
+                        const options = mimeType ? { mimeType } : {};
+                        this.mediaRecorder = new MediaRecorder(stream, options);
+                        this.audioChunks = [];
+
+                        this.mediaRecorder.ondataavailable = (e) => {
+                            if (e.data && e.data.size > 0) {
+                                this.audioChunks.push(e.data);
+                            }
+                        };
+
+                        this.mediaRecorder.onstop = async () => {
+                            const recordedMime = this.mediaRecorder.mimeType || mimeType || 'audio/webm';
+                            const audioBlob = new Blob(this.audioChunks, { type: recordedMime });
+                            this.userAudioUrl = URL.createObjectURL(audioBlob);
+
+                            // Stop tracks
+                            stream.getTracks().forEach(track => track.stop());
+
+                            await this.uploadRecordingBlob(audioBlob, recordedMime);
+                        };
+
+                        this.mediaRecorder.start();
+                        this.isRecording = true;
+                        this.recordingState = 'recording';
+                    } catch (err) {
+                        this.isRecording = false;
+                        this.recordingState = 'error';
+                        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                            this.recordingErrorMessage = 'Quyền truy cập Micro bị từ chối. Vui lòng cấp quyền Microphone trên trình duyệt để ghi âm.';
+                        } else {
+                            this.recordingErrorMessage = 'Không thể khởi động ghi âm: ' + (err.message || 'Lỗi thiết bị micro');
+                        }
+                    }
+                },
+
+                stopRecording() {
+                    if (this.mediaRecorder && this.isRecording) {
+                        this.recordingState = 'stopping';
+                        this.mediaRecorder.stop();
+                        this.isRecording = false;
+                    }
+                },
+
+                async uploadRecordingBlob(audioBlob, mimeType) {
+                    const seg = this.currentSegment();
+                    if (!seg || !this.$wire || !this.$wire.lesson) return;
+
+                    this.recordingState = 'uploading';
+                    this.recordingErrorMessage = '';
+
+                    const formData = new FormData();
+                    const ext = mimeType.includes('mp4') || mimeType.includes('m4a') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('wav') ? 'wav' : 'webm';
+                    formData.append('audio', audioBlob, `recording.${ext}`);
+                    formData.append('lesson_id', this.$wire.lesson.id);
+                    formData.append('segment_id', seg.id);
+                    formData.append('duration_ms', 4000);
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                    try {
+                        const response = await fetch('/shadowing/recordings/upload', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: formData,
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            this.userAudioUrl = data.playback_url;
+                            this.recordingState = 'ready';
+
+                            // Update Livewire userRecordings array locally
+                            if (this.$wire.userRecordings) {
+                                this.$wire.userRecordings[seg.id] = {
+                                    public_id: data.public_id,
+                                    playback_url: data.playback_url,
+                                    duration_ms: data.duration_ms,
+                                    size_bytes: data.size_bytes,
+                                };
+                            }
+                            this.$wire.recordAttempt(null, data.playback_url, data.duration_ms);
+                        } else {
+                            this.recordingState = 'error';
+                            this.recordingErrorMessage = data.message || 'Lỗi tải lên file ghi âm.';
+                        }
+                    } catch (err) {
+                        this.recordingState = 'error';
+                        this.recordingErrorMessage = 'Lỗi kết nối khi tải lên file ghi âm. File ghi âm bản địa tạm thời vẫn được giữ lại.';
+                    }
+                },
+
+                playUserAudio() {
+                    if (!this.userAudioUrl) return;
+
+                    if (this.isPlayingUserAudio && this.userAudioElement) {
+                        this.stopUserAudio();
+                        return;
+                    }
+
+                    // 1. Pause sample YouTube / Audio playback when playing student recording
+                    this.pausePlayback();
+
+                    this.userAudioElement = new Audio(this.userAudioUrl);
+                    this.isPlayingUserAudio = true;
+
+                    this.userAudioElement.onended = () => {
+                        this.isPlayingUserAudio = false;
+                    };
+                    this.userAudioElement.onpause = () => {
+                        this.isPlayingUserAudio = false;
+                    };
+                    this.userAudioElement.onerror = () => {
+                        this.isPlayingUserAudio = false;
+                    };
+
+                    this.userAudioElement.play();
+                },
+
+                stopUserAudio() {
+                    if (this.userAudioElement) {
+                        try {
+                            this.userAudioElement.pause();
+                            this.userAudioElement.currentTime = 0;
+                        } catch(e) {}
+                        this.userAudioElement = null;
+                    }
+                    this.isPlayingUserAudio = false;
+                },
+
+                goToSegment(index) {
+                    if (index < 1 || index > this.segments.length) return;
+                    this.currentIndex = index;
+                    this.updateRecordingForActiveSegment();
+                    this.playCurrentSegment();
+                },
+
+                prevSegment() {
+                    let target = this.currentIndex - 1;
+                    if (this.$wire && this.$wire.weakOnlyFilter) {
+                        while (target >= 1) {
+                            const attempt = this.$wire.userAttempts?.[target];
+                            if (!attempt || attempt.mastery_status !== 'mastered') break;
+                            target--;
+                        }
+                    }
+                    if (target >= 1) {
+                        this.currentIndex = target;
+                        this.loopCounter = 0;
+                        this.updateRecordingForActiveSegment();
+                        this.playCurrentSegment();
+                    }
+                },
+
+                nextSegment() {
+                    let target = this.currentIndex + 1;
+                    if (this.$wire && this.$wire.weakOnlyFilter) {
+                        while (target <= this.segments.length) {
+                            const attempt = this.$wire.userAttempts?.[target];
+                            if (!attempt || attempt.mastery_status !== 'mastered') break;
+                            target++;
+                        }
+                    }
+                    if (target <= this.segments.length) {
+                        this.currentIndex = target;
+                        this.loopCounter = 0;
+                        this.updateRecordingForActiveSegment();
+                        this.playCurrentSegment();
                     }
                 },
 

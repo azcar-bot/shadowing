@@ -73,4 +73,27 @@ return [
             'base_url' => env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1'),
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Student Recording Media Persistence Configuration
+    |--------------------------------------------------------------------------
+    */
+    'recording' => [
+        'enabled' => env('SHADOWING_RECORDING_ENABLED', true),
+        'max_size_kb' => (int) env('SHADOWING_RECORDING_MAX_SIZE_KB', 5120), // 5MB
+        'max_duration_ms' => (int) env('SHADOWING_RECORDING_MAX_DURATION_MS', 120000), // 120s
+        'temporary_url_ttl_minutes' => (int) env('SHADOWING_RECORDING_URL_TTL_MINUTES', 10),
+        'allowed_mime_types' => [
+            'audio/webm',
+            'audio/webm;codecs=opus',
+            'video/webm',
+            'audio/mp4',
+            'audio/m4a',
+            'video/mp4',
+            'audio/ogg',
+            'audio/wav',
+            'audio/x-matroska',
+        ],
+    ],
 ];

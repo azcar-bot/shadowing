@@ -299,6 +299,8 @@ class ShadowingPractice extends Component
         return 'unseen';
     }
 
+    public array $userRecordings = [];
+
     private function loadUserProgress(): void
     {
         $userId = Auth::id();
@@ -306,6 +308,7 @@ class ShadowingPractice extends Component
             return;
         }
 
+        $user = Auth::user();
         $segmentIds = ShadowingSegment::where('shadowing_lesson_id', $this->lesson->id)->pluck('id')->toArray();
 
         $progresses = UserShadowingProgress::where('user_id', $userId)
@@ -321,6 +324,29 @@ class ShadowingPractice extends Component
                     'practice_count' => (int) $prog->practice_count,
                     'mastery_status' => $prog->mastery_status ?? 'unseen',
                 ];
+            }
+        }
+
+        // Load active student recordings for this lesson
+        $recordings = \App\Modules\Shadowing\Infrastructure\Persistence\Models\ShadowingRecording::where('user_id', $userId)
+            ->where('shadowing_lesson_id', $this->lesson->id)
+            ->get();
+
+        /** @var \App\Modules\Shadowing\Domain\Services\ShadowingRecordingService $recordingService */
+        $recordingService = app(\App\Modules\Shadowing\Domain\Services\ShadowingRecordingService::class);
+
+        $this->userRecordings = [];
+        foreach ($recordings as $rec) {
+            try {
+                $playbackUrl = $recordingService->getTemporaryPlaybackUrl($user, $rec);
+                $this->userRecordings[$rec->shadowing_segment_id] = [
+                    'public_id' => $rec->public_id,
+                    'playback_url' => $playbackUrl,
+                    'duration_ms' => $rec->duration_ms,
+                    'size_bytes' => $rec->size_bytes,
+                ];
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Failed to generate temporary URL for recording ID {$rec->id}", ['error' => $e->getMessage()]);
             }
         }
     }
