@@ -20,7 +20,7 @@
                   [ShadowingLessonFactory]
                              │ (DB models & segments)
                              ▼
-                 [ShadowingPractice (Livewire 4)]
+                  [ShadowingPractice (Livewire 4)]
 ```
 
 ### Storage Architecture (ADR-004 — LOCKED)
@@ -47,14 +47,15 @@ logical disk: media
 
 ## 2. Current Active Phase & Review Status
 
-| Feature / Bug | Priority | Status | Reviewer | PR Branch |
+| Feature / Bug | Priority | Status | Reviewer | PR Branch / Commit |
 |---|---|---|---|---|
-| **Translation EN→VI V3 Final** | P1 | `READY_FOR_TRANSLATION_FINAL_REVIEW` | Architect | `feat/shadowing-translation-en-vi` (PR #2) |
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` (Merged PR #1) | Architect | `main` |
-| **BUG-005** Null Score Cast | P0 | `RESOLVED` (Merged PR #1) | Architect | `main` |
+| **Phase ⑤ Recording** | P1 | `READY_FOR_RECORDING_SPEC` | Architect | `feat/shadowing-recording-media-persistence` |
+| **Translation EN→VI V3** | P1 | `ACCEPTED / MERGED` | Architect | Merged PR #2 (`808b3b074f1ae641b3a8861e16a91ddd9b1fb495`) |
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
+| **BUG-005** Null Score Cast | P0 | `RESOLVED` | Architect | Merged PR #1 (`ade665a26a6e12abac9ea84639ecdf7a53509a11`) |
 
-**PHPUnit Suite:** 36/36 Passed (114 assertions, 3.28s).
-**Evidence Document:** See `TRANSLATION_EVIDENCE_V3.md`.
+**PHPUnit Suite:** 36/36 Passed (114 assertions, 1.24s).
+**Evidence Documents:** See `TRANSLATION_EVIDENCE_V1.md`, `TRANSLATION_EVIDENCE_V2.md`, `TRANSLATION_EVIDENCE_V3.md`.
 
 ---
 
@@ -70,12 +71,12 @@ logical disk: media
 | Per-Chunk Status | `WIRED` | Migration `000015` (`mastery_status`), Livewire progress tracking, sidebar dot badges |
 | Weak Segment Filter | `WIRED` | Livewire `$weakOnlyFilter`, dimming mastered cards, skip navigation |
 | Nullable Scores | `VERIFIED` | Migration applied, service handles null correctly |
+| Translation EN→VI | `VERIFIED` | 23 permanent tests, DeepSeek adapter, dynamic config control, transient retryable vs permanent exception classification, network error handling, queued job `$timeout = 300s`, Lock TTL `420s`, bounded batching (25 chunks), real Vietnamese evidence |
 
 ---
 
 ## 4. Pending Work (Ordered)
 
-1. ⏳ **Translation EN→VI V3 Final** — `READY_FOR_TRANSLATION_FINAL_REVIEW` (PR #2, 36/36 tests passed, 114 assertions, `TRANSLATION_EVIDENCE_V3.md`)
-2. 🔒 **Merge PR #2** — BLOCKED pending Architect final merge approval
-3. 🔒 **Phase ⑤ Recording** — BLOCKED until Translation merge
-4. 🔒 **Phase ⑥ AI Pronunciation** — BLOCKED until Recording
+1. 🟢 **Translation EN→VI V3 Final** — `ACCEPTED / MERGED` (PR #2, Merge Commit `808b3b074f1ae641b3a8861e16a91ddd9b1fb495`, 36/36 tests passed)
+2. ⏳ **Phase ⑤ Recording** — `READY_FOR_RECORDING_SPEC` (Branch `feat/shadowing-recording-media-persistence`, awaiting spec from Architect)
+3. 🔒 **Phase ⑥ AI Pronunciation** — `BLOCKED until Phase ⑤ Recording is complete`

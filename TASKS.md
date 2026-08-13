@@ -2,22 +2,12 @@
 
 ## Active Queue
 
-### [READY_FOR_TRANSLATION_FINAL_REVIEW] Translation EN→VI V3 Final
+### [READY_FOR_RECORDING_SPEC] Phase ⑤: Student Recording — Cloudflare R2 / MinIO Persistence
 - **Priority:** P1
-- **Status:** READY_FOR_TRANSLATION_FINAL_REVIEW — PR #2 (`feat/shadowing-translation-en-vi` -> `main`)
-- **Scope:** Complete EN->VI translation pipeline with dynamic config control (`shadowing.translation.enabled`/`provider`), exception classification (transient retryable vs permanent non-retryable), network transport error handling (`TranslationProviderTransientException`), queued job (`ProcessShadowingTranslationJob`) with `$timeout = 300s`, `$tries = 3`, backoff `[30, 120, 300]`, Lock TTL `420s`, bounded batching (25 chunks), 23 permanent PHPUnit translation tests (36/36 total pass), runtime verification with real Vietnamese translations, and zero student session AI calls.
-- **Evidence:** See `TRANSLATION_EVIDENCE_V3.md` and `DECISIONS.md` (ADR-006).
-
-### [RESOLVED] BUG-004: Wrong Transcript Source
-- **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
-
-### [RESOLVED] BUG-005: Null Score Cast in loadUserProgress
-- **Status:** RESOLVED — Merged in PR #1 (Commit `ade665a`)
-
-### [BLOCKED] Phase ⑤: Student Recording — Cloudflare R2 / MinIO Persistence
+- **Status:** READY_FOR_RECORDING_SPEC — Branch `feat/shadowing-recording-media-persistence`
 - **Scope:** Upload client-side WebM recording Blobs via `Storage::disk('media')` to private object storage, persist object metadata in DB (NOT presigned URLs), and enable persistent dual-audio playback (`[🔊 Giọng mẫu]` vs `[🎙️ Giọng tôi]`).
-- **Storage:** See ADR-004 and ADR-005 in DECISIONS.md.
-- **Dependencies:** BLOCKED until Translation PR #2 is ACCEPTED/MERGED.
+- **Storage Rules:** See ADR-004 and ADR-005 in DECISIONS.md. Use `Storage::disk('media')` ONLY. FORBIDDEN: hardcoded `r2`, `minio`, or `s3` disks; FORBIDDEN: presigned URL DB persistence.
+- **Dependencies:** Translation EN→VI MERGED (PR #2). Awaiting technical specification from Architect.
 
 ### [BLOCKED] Phase ⑥: AI Pronunciation Evaluation
 - **Scope:** Deepgram / DeepSeek STT & phonetic alignment evaluation.
@@ -26,6 +16,19 @@
 ---
 
 ## Completed Tasks
+
+### [COMPLETED] Translation EN→VI V3 Final
+- **PR:** [#2](https://github.com/azcar-bot/shadowing/pull/2) (Merged, Commit `808b3b074f1ae641b3a8861e16a91ddd9b1fb495`)
+- **Scope:** Complete EN->VI translation pipeline with dynamic config control (`shadowing.translation.enabled`/`provider`), exception classification (transient retryable vs permanent non-retryable), network transport error handling (`TranslationProviderTransientException`), queued job (`ProcessShadowingTranslationJob`) with `$timeout = 300s`, `$tries = 3`, backoff `[30, 120, 300]`, Lock TTL `420s`, bounded batching (25 chunks), 23 permanent PHPUnit translation tests (36/36 total pass), runtime verification with real Vietnamese translations, and zero student session AI calls.
+- **Evidence:** See `TRANSLATION_EVIDENCE_V1.md`, `TRANSLATION_EVIDENCE_V2.md`, `TRANSLATION_EVIDENCE_V3.md` and `DECISIONS.md` (ADR-006).
+
+### [COMPLETED] BUG-004: Wrong Transcript Source
+- **PR:** [#1](https://github.com/azcar-bot/shadowing/pull/1) (Merged, Commit `ade665a26a6e12abac9ea84639ecdf7a53509a11`)
+- **Scope:** Source validation gate, deduplication filtering, factory rejection of fake sources, legacy lesson exclusion.
+
+### [COMPLETED] BUG-005: Null Score Cast in loadUserProgress
+- **PR:** [#1](https://github.com/azcar-bot/shadowing/pull/1) (Merged, Commit `ade665a26a6e12abac9ea84639ecdf7a53509a11`)
+- **Scope:** Preserve `best_score = NULL` in Livewire state and attempt recording.
 
 ### [COMPLETED] Phase ①: Keyboard-First UX & Auto-Follow Centering
 - **Commit:** `3ae99a0`
