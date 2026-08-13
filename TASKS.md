@@ -2,16 +2,16 @@
 
 ## Active Queue
 
-### [BLOCKER] BUG-004: Wrong Transcript Source — Fix Required Before Any New Phase
+### [READY_TO_MERGE_REVIEW] BUG-004: Wrong Transcript Source
 - **Priority:** P0 CRITICAL
-- **Status:** NEEDS_FIX (Review Round 2)
-- **Scope:** See BUGS.md BUG-004 for full details. All 6 sub-items must be fixed.
-- **Reviewer Verdict:** Do NOT proceed to Phase ⑤ until BUG-004 receives `ACCEPT`.
+- **Status:** ACCEPTED (Round 4) — READY_TO_MERGE_REVIEW (PR `fix/bug-004-005-round3` -> `main`)
+- **PHPUnit Tests:** `ShadowingRegressionVerificationTest.php` (3 permanent feature tests passed). Total suite: 13/13 passed.
+- **E2E Evidence:** 8/8 Integration tests + Real Playwright Browser E2E passed. See `E2E_EVIDENCE_ROUND4.md`.
 
-### [BLOCKER] BUG-005: Null Score Cast in loadUserProgress
+### [ACCEPTED] BUG-005: Null Score Cast in loadUserProgress
 - **Priority:** P0
-- **Status:** OPEN
-- **Scope:** Fix `(float) $prog->best_score` → preserve null. See BUGS.md.
+- **Status:** ACCEPTED (Round 3)
+- **Scope:** Fixed `(float) $prog->best_score` → null preserved. Model casts updated. Verified in Test 5.
 
 ### [BLOCKED] Translation EN→VI (After BUG-004 ACCEPT)
 - **Scope:** Add a one-time Translation Provider that runs AI translation (EN→VI) when a lesson is created. Store `translation_vi` per chunk/segment in DB. Do NOT re-translate on every student session.

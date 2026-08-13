@@ -4,7 +4,9 @@
 
 ### BUG-004: Wrong Transcript Source — Hardcoded Legacy Lesson Code [P0 CRITICAL]
 - **Reported:** 2026-08-13
-- **Status:** READY_FOR_RE_REVIEW (Round 3) — Commit `d18649f`
+- **Status:** ACCEPTED (Round 4) — READY_TO_MERGE_REVIEW
+- **Permanent PHPUnit Suite:** 13/13 tests passed (46 assertions). See `ShadowingRegressionVerificationTest.php`.
+- **E2E Evidence:** Verified via 8 integration tests + Real Playwright Browser E2E. See [E2E_EVIDENCE_ROUND4.md](file:///z:/home/pc/projects/shadowing-coordination/E2E_EVIDENCE_ROUND4.md).
 - **Root Cause:** `ShadowingPractice.php` had hardcoded `$lessonCode = 'shadowing_youtube_tekkon'` which loaded a legacy prototype lesson by default. The fallback chain (`?? ShadowingLesson::first()`) could load ANY lesson including invalid ones.
 - **Fix Applied:**
   1. ✅ Removed hardcoded `$lessonCode = 'shadowing_youtube_tekkon'` → empty string `''`
@@ -25,7 +27,8 @@
 
 ### BUG-005: Null Score Cast in loadUserProgress [P0]
 - **Reported:** 2026-08-13
-- **Status:** READY_FOR_RE_REVIEW — Commit `d18649f`
+- **Status:** ACCEPTED (Round 3)
+- **E2E Evidence:** Verified null score preservation in DB and Livewire state. See [E2E_EVIDENCE_ROUND4.md](file:///z:/home/pc/projects/shadowing-coordination/E2E_EVIDENCE_ROUND4.md).
 - **Root Cause:** `'score' => (float) $prog->best_score` in `loadUserProgress()` converted database `NULL` to `0.0`, losing the distinction between "unscored" and "scored 0".
 - **Fix Applied:**
   1. ✅ Changed to `$prog->best_score !== null ? (float) $prog->best_score : null`

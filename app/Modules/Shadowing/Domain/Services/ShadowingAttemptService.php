@@ -14,7 +14,7 @@ class ShadowingAttemptService
         string $mode = 'LISTEN_REPEAT',
         ?string $audioUrl = null,
         int $durationMs = 0,
-        float $score = 100.0
+        ?float $score = null
     ): UserShadowingAttempt {
         $attempt = UserShadowingAttempt::create([
             'user_id' => $userId,
@@ -30,9 +30,14 @@ class ShadowingAttemptService
             'shadowing_segment_id' => $segmentId,
         ]);
 
-        $progress->best_score = max($progress->best_score ?? 0.0, $score);
+        if ($score !== null) {
+            $progress->best_score = $progress->best_score !== null
+                ? max((float) $progress->best_score, $score)
+                : $score;
+            $progress->is_completed = $progress->best_score >= 75.0;
+        }
+
         $progress->practice_count = ($progress->practice_count ?? 0) + 1;
-        $progress->is_completed = $progress->best_score >= 75.0;
         $progress->last_practiced_at = Carbon::now();
         $progress->save();
 

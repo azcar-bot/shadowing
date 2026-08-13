@@ -45,14 +45,15 @@ logical disk: media
 
 ---
 
-## 2. Current Blockers
+## 2. Current Blockers & Review Status
 
-| Bug | Priority | Status | Reviewer |
-|---|---|---|---|
-| **BUG-004** Wrong Transcript Source | P0 CRITICAL | NEEDS_FIX (Round 2) | Architect |
-| **BUG-005** Null Score Cast | P0 | OPEN | — |
+| Bug | Priority | Status | Reviewer | PR Branch |
+|---|---|---|---|---|
+| **BUG-004** Wrong Transcript Source | P0 CRITICAL | `ACCEPTED (READY_TO_MERGE_REVIEW)` | Architect | `fix/bug-004-005-round3` |
+| **BUG-005** Null Score Cast | P0 | `ACCEPTED` | Architect | `fix/bug-004-005-round3` |
 
-**⚠️ Phase ⑤ (Recording) and Phase ⑥ (AI Eval) are BLOCKED until BUG-004 receives `ACCEPT` from Architect.**
+**PHPUnit Suite:** 13/13 Passed (46 assertions, 0.95s).
+**E2E Evidence:** 8/8 Integration Tests + Real Playwright Browser E2E Passed. See `E2E_EVIDENCE_ROUND4.md`.
 
 ---
 

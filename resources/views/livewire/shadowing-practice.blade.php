@@ -1,8 +1,8 @@
 <div class="min-h-screen w-full bg-[#f5f5f9] text-slate-800 font-['Public_Sans',sans-serif] flex flex-col select-none"
     x-data="shadowingEngine({
-        lessonType: '{{ $this->lesson->media_type ?? 'audio' }}',
-        youtubeId: '{{ $this->lesson->youtube_video_id ?? '' }}',
-        audioUrl: '{{ $this->lesson->audio_url ?? '' }}',
+        lessonType: '{{ $this->lesson?->media_type ?? 'audio' }}',
+        youtubeId: '{{ $this->lesson?->youtube_video_id ?? '' }}',
+        audioUrl: '{{ $this->lesson?->audio_url ?? '' }}',
         segments: {{ json_encode($this->studentSegments) }},
         currentIndex: {{ $currentIndex }}
     })"
@@ -41,7 +41,7 @@
                     @endforeach
                 </select>
                 <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#696cff]/10 text-[#696cff] border border-[#696cff]/20">
-                    {{ $this->lesson->level }}
+                    {{ $this->lesson?->level ?? '' }}
                 </span>
             </div>
         </div>
@@ -77,6 +77,22 @@
         </div>
     </header>
 
+    @if(!$this->lesson)
+    {{-- EMPTY STATE: No lesson selected or lesson not found --}}
+    <div class="flex-1 flex items-center justify-center p-8">
+        <div class="text-center space-y-4 max-w-md">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto">
+                <i class="bx bx-book-open"></i>
+            </div>
+            <h2 class="text-lg font-bold text-slate-700">Chưa chọn bài luyện</h2>
+            <p class="text-sm text-slate-500">Vui lòng chọn một bài Shadowing từ danh sách hoặc tạo bài mới từ YouTube.</p>
+            <a href="{{ route('shadowing.index') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#696cff] hover:bg-[#5f61e6] text-white text-sm font-bold shadow-md shadow-[#696cff]/25 transition-all active:scale-95">
+                <i class="bx bx-left-arrow-alt"></i>
+                Quay về trang Shadowing
+            </a>
+        </div>
+    </div>
+    @else
     {{-- Main 2-Column Grid Workspace (LEFT 65% / RIGHT 35%) --}}
     <div class="max-w-[1600px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
@@ -87,13 +103,13 @@
             <div class="w-full bg-black rounded-2xl overflow-hidden shadow-sm relative transition-all duration-300"
                 :class="largeVideo ? 'max-w-none max-h-[70vh]' : 'max-w-full max-h-[380px] mx-auto'">
 
-                @if(($this->lesson->media_type ?? 'audio') === 'youtube' && !empty($this->lesson->youtube_video_id))
+                @if(($this->lesson?->media_type ?? 'audio') === 'youtube' && !empty($this->lesson?->youtube_video_id))
                     {{-- YouTube Player Iframe --}}
                     <div class="relative w-full aspect-video bg-black"
                          :class="largeVideo ? 'max-h-[70vh]' : 'max-h-[380px]'">
                         <iframe id="youtube-player"
                             class="w-full h-full border-0"
-                            src="https://www.youtube-nocookie.com/embed/{{ $this->lesson->youtube_video_id }}?enablejsapi=1&autoplay=0&rel=0&controls=1&modestbranding=1"
+                            src="https://www.youtube-nocookie.com/embed/{{ $this->lesson?->youtube_video_id }}?enablejsapi=1&autoplay=0&rel=0&controls=1&modestbranding=1"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowfullscreen>
                         </iframe>
@@ -105,10 +121,10 @@
                             🎙️
                         </div>
                         <div>
-                            <h3 class="font-bold text-slate-900 text-base">{{ $this->lesson->title }}</h3>
+                            <h3 class="font-bold text-slate-900 text-base">{{ $this->lesson?->title ?? 'Chưa chọn bài' }}</h3>
                             <p class="text-xs text-slate-500 mt-0.5">Đoạn {{ $currentIndex }} / {{ count($this->studentSegments) }} · {{ $this->currentStudentSegment->speaker ?? 'Mẫu chuẩn' }}</p>
                         </div>
-                        <audio x-ref="masterAudio" class="hidden" src="{{ $this->lesson->audio_url }}"></audio>
+                        <audio x-ref="masterAudio" class="hidden" src="{{ $this->lesson?->audio_url ?? '' }}"></audio>
                     </div>
                 @endif
             </div>
@@ -712,7 +728,7 @@
                         this.mediaRecorder.onstop = () => {
                             const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
                             this.userAudioUrl = URL.createObjectURL(audioBlob);
-                            @this.recordAttempt(92.0, this.userAudioUrl, 4000);
+                            @this.recordAttempt(null, this.userAudioUrl, 4000);
                         };
 
                         this.mediaRecorder.start();
@@ -786,4 +802,5 @@
             };
         }
     </script>
+    @endif
 </div>
