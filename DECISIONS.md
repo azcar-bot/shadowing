@@ -75,4 +75,21 @@
   4. **Strict Authorization & User Isolation:** Recordings are private to the owning user (`user_id`). Access by other users returns `403 Forbidden`.
   5. **Mutually Exclusive Dual-Audio Playback:** Triggering `playUserAudio()` pauses sample audio/video playback; triggering sample audio playback pauses `playUserAudio()`.
 
-
+## ADR-008: Pronunciation Analysis & Deterministic Scoring Architecture
+- **Date:** 2026-08-13
+- **Status:** APPROVED — LOCKED
+- **Context:** Previous LLM-as-judge approaches were non-deterministic, harder to test, and costly. We need reproducible scoring where the same audio/evidence always gets the same score.
+- **Decision:**
+  - Implement a Deterministic Scoring Engine based on extracted speech evidence (recognized words, timing, phonemes).
+  - **OLD (DEPRECATED):** LLM-as-judge approach scoring audio directly.
+  - **NEW (LOCKED):** `Student Recording → Speech/Pronunciation Analysis Provider → Recognized Words + Timing + Phoneme Evidence → Word Alignment Engine → Pronunciation Error Detection → Deterministic Scoring Engine → Student Feedback UI`
+  - Scoring engine MUST be deterministic.
+  - LLM role is OPTIONAL coaching/explanation only and CANNOT calculate/change/override the score.
+  - Provider abstraction via `PronunciationAnalysisProviderContract` (no hardcoding Deepgram, Azure, etc.).
+  - Final scoring weights are **TBD** until Product Owner approval.
+  - No fake AI scores: recording success ≠ pronunciation success.
+- **Consequence:** 
+  - Pronunciation scores will be reproducible and testable.
+  - Provider can be swapped without changing scoring logic.
+  - LLM costs remain optional.
+  - See `ADR-008-PRONUNCIATION-DETERMINISTIC-SCORING.md` for full details.

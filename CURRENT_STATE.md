@@ -82,4 +82,7 @@ logical disk: media
 
 1. 🟢 **Translation EN→VI V3 Final** — `ACCEPTED / MERGED` (PR #2, Merge Commit `808b3b074f1ae641b3a8861e16a91ddd9b1fb495`)
 2. 🟢 **Phase ⑤ Recording** — `READY_FOR_RECORDING_REVIEW_V1` (Branch `feat/shadowing-recording-media-persistence`, 54/54 tests passed)
-3. 🔒 **Phase ⑥ AI Pronunciation** — `BLOCKED until Phase ⑤ Recording is ACCEPTED/MERGED`
+3. 🔒 **Phase ⑥ Pronunciation Analysis & Deterministic Scoring** — `BLOCKED until Phase ⑤ Recording is ACCEPTED/MERGED`
+   - Pipeline is LOCKED as deterministic
+   - LLM scoring is DISABLED
+   - Implementation has NOT started

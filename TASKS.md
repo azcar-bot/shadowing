@@ -9,8 +9,8 @@
 - **Security & Integrity:** Purged hardcoded tokens (`EXPOSED_TOKEN_REVOKED = YES`), server-side magic byte MIME authority (`UploadedFile::getMimeType()`), presigned URLs never persisted in any DB table, real `duration_ms` measurement, published lesson access policy (`status === 'published'`), sanitized 500 error responses, kill switch (`shadowing.recording.enabled`), `lockForUpdate()` transaction safety, storage-first delete semantics.
 - **Dependencies:** Ready for Architect Review.
 
-### [BLOCKED] Phase ⑥: AI Pronunciation Evaluation
-- **Scope:** Deepgram / DeepSeek STT & phonetic alignment evaluation.
+### [BLOCKED] Phase ⑥: Pronunciation Analysis & Deterministic Scoring
+- **Scope:** Speech/Pronunciation Analysis Provider, Word Alignment Engine, Pronunciation Error Detection, and Deterministic Scoring Engine. LLM coaching is optional. Final weights TBD.
 - **Dependencies:** BLOCKED until Phase ⑤ Recording is ACCEPTED and MERGED into `main`.
 
 ---
